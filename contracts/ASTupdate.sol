@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+
 //import "@openzeppelin/contracts-upgradeable/contracts/token/common/ERC2981Upgradeable.sol";
 
 contract ASTNftPresale is
@@ -19,7 +20,6 @@ contract ASTNftPresale is
     PausableUpgradeable,
     OwnableUpgradeable,
     ERC721BurnableUpgradeable
-    
 {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private tokenIdCount;
@@ -59,8 +59,7 @@ contract ASTNftPresale is
     // Mapping
     mapping(uint256 => SaleInfo) public SaleInfoMap; // sale mapping
     mapping(address => UserInfo) public UserInfoMap; // user mapping
-    // mapping (uint256 => uint256[]) tierMap;
-    // mapping(uint256=>mapping(uint256=> uint256))
+    mapping(uint256=>uint256[]) public tierMap;
 
     function initialize(
         string memory _name,
@@ -92,7 +91,7 @@ contract ASTNftPresale is
         uint256 _maxSupply,
         uint256 _start,
         uint256 _ddays
-    ) public onlyOwner returns(uint256){
+    ) public onlyOwner returns (uint256) {
         saleId++;
         SaleInfo memory details;
         details.cost = _cost;
@@ -105,23 +104,32 @@ contract ASTNftPresale is
         return saleId;
     }
 
+    function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner{
+        
+        tierMap[_amount][0] = _min;
+        tierMap[_amount][1] = _max;
+    }
+
     // Eligibility Criteria
-    function checking(address _add) internal returns (uint256) {
+    function checking(address _add, uint256 _amount) internal returns (uint256) {
         uint256 bal = balanceOf(_add);
         require(bal >= 100, "Insufficient balance");
         uint256 count;
-        if (bal >= 100 && bal <= 300) {
-            count = 1;
-        } else if (bal > 300 && bal <= 600) {
-            count = 2;
-        } else if (bal > 600 && bal <= 800) {
-            count = 3;
-        } else if (bal > 800) {
-            count = 4;
+        require(tierMap[_amount][0] >= bal && tierMap[_amount][1]<=bal, "not enough balance for purchase");
+        if(_amount == 1){
+            count=1;
+        } else if(_amount == 2){
+            count=2;
+        } else if(_amount==3){
+            count=3;
         }
 
+        // tierMap[1]=[100,300];
+        // tierMap[2]=[301,600];
+        // tierMap[3]=[601,800];
+
         UserInfo memory user = UserInfoMap[_add];
-        user.limit = user.lastbuy==0?count: count-user.tokens;
+        user.limit = user.lastbuy == 0 ? bal: bal - user.tokens;
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
@@ -130,11 +138,13 @@ contract ASTNftPresale is
     // Presale Buy
     function buyPresale(address to, uint256 _amount) public payable {
         require(presaleM, "Sale is off");
-        uint256 buylimit = checking(to);
-        require(_amount <= buylimit, "buying limit exceeded");
-        SaleInfo memory details = SaleInfoMap[saleId];
+       
+      
+       uint256 buylimit = checking(to, _amount);
+       require(_amount <= buylimit, "buying limit exceeded");
+       SaleInfo memory details = SaleInfoMap[saleId];
         UserInfo memory user = UserInfoMap[to];
-        
+
         require(
             msg.value >= (_amount * (details.cost + details.mintCost)),
             "Insufficient value"

@@ -43,6 +43,7 @@ contract ASTILO is
         uint256 cliff;
         uint256 vesting;
         uint256 thresHold;
+
     }
 
     struct UserToken {
@@ -53,8 +54,10 @@ contract ASTILO is
         uint256 createdOn;
     }
 
+
     mapping(uint256 => SaleDetail) public salesDetailMap;
     mapping(uint256=>mapping(address => UserToken)) public userTokenMap;
+
 
     /**
      * BoughtTokens
@@ -104,9 +107,12 @@ contract ASTILO is
         detail.vesting = _vesting;
         detail.thresHold = _thresHold;
         salesDetailMap[saleId] = detail;
+
         emit SaleCreated(saleId);
         return saleId;
     }
+    
+
 
     /**
      * @notice Update Merkel Root to Whitelist users
@@ -128,6 +134,7 @@ contract ASTILO is
     function pause() public onlyOwner {
         _pause();
     }
+    // abcdefghijklmnopqrstuvwxyz
 
     function unpause() public onlyOwner {
         _unpause();
