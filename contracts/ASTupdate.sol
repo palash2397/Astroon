@@ -136,11 +136,7 @@ contract ASTNftPresale is
         // tierMap[3]=[601,800];
 
         UserInfo memory user = UserInfoMap[_add];
-
-        user.limit = user.lastbuy == 0 ? bal : bal - user.tokens;
-
         user.limit = user.lastbuy == 0 ? count: count - user.tokens;
-
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
@@ -149,12 +145,10 @@ contract ASTNftPresale is
     // Presale Buy
     function buyPresale(address to, uint256 _amount) public payable {
         require(presaleM, "Sale is off");
-
         uint256 buylimit = checking(to, _amount);
         require(_amount <= buylimit, "buying limit exceeded");
         SaleInfo memory detail = SaleInfoMap[saleId];
         UserInfo memory user = UserInfoMap[to];
-
         require(
             msg.value >= (_amount * (detail.cost + detail.mintCost)),
             "Insufficient value"
@@ -199,7 +193,6 @@ contract ASTNftPresale is
         user.createdOn = block.timestamp;
 
         uint256 i=0;
-
         while( i < _amount) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
