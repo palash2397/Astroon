@@ -129,7 +129,7 @@ contract ASTNftPresale is
         // tierMap[3]=[601,800];
 
         UserInfo memory user = UserInfoMap[_add];
-        user.limit = user.lastbuy == 0 ? bal: bal - user.tokens;
+        user.limit = user.lastbuy == 0 ? count: count - user.tokens;
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
