@@ -104,10 +104,15 @@ contract ASTNftPresale is
         return saleId;
     }
 
+<<<<<<< HEAD
     function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner {
+=======
+    function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner
+>>>>>>> ced7f8d96aeb7521505658c7a936a5be963a674f
         tierMap[_amount][0] = _min;
         tierMap[_amount][1] = _max;
     }
+    
 
     // Eligibility Criteria
     function checking(
@@ -134,7 +139,11 @@ contract ASTNftPresale is
         // tierMap[3]=[601,800];
 
         UserInfo memory user = UserInfoMap[_add];
+<<<<<<< HEAD
         user.limit = user.lastbuy == 0 ? bal : bal - user.tokens;
+=======
+        user.limit = user.lastbuy == 0 ? count: count - user.tokens;
+>>>>>>> ced7f8d96aeb7521505658c7a936a5be963a674f
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
