@@ -139,11 +139,11 @@ contract ASTNftPresale is
         // tierMap[3]=[601,800];
 
         UserInfo memory user = UserInfoMap[_add];
-<<<<<<< HEAD
+
         user.limit = user.lastbuy == 0 ? bal : bal - user.tokens;
-=======
+
         user.limit = user.lastbuy == 0 ? count: count - user.tokens;
->>>>>>> ced7f8d96aeb7521505658c7a936a5be963a674f
+
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
@@ -170,7 +170,7 @@ contract ASTNftPresale is
         user.tokens += _amount;
         user.lastbuy = block.timestamp;
         user.limitRemain = buylimit - _amount;  
-        // user.
+  
         uint256 i = 1;
         while (i <= _amount) {
             tokenIdCount.increment();
@@ -183,7 +183,7 @@ contract ASTNftPresale is
         emit BoughtNFT(to, _amount, saleId);
     }
 
-
+    // Public sale
     function buyPublic(uint256 _amount) public {
         require(presaleM, "Presale is Off");
         UserInfo memory user = UserInfoMap[_msgSender()];
