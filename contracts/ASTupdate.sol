@@ -180,10 +180,6 @@ contract ASTNftPresale is
         UserInfo memory user = UserInfoMap[_msgSender()];
         SaleInfo memory detail = SaleInfoMap[saleId];
 
-       require(
-            msg.value >= (_amount * (detail.cost + detail.mintCost)),
-            "Insufficient value"
-        );
         require(
             msg.value >= (_amount * (detail.cost +detail.mint_Cost)),
             "Insufficient funds"
