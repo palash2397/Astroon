@@ -59,7 +59,7 @@ contract ASTNftPresale is
     // Mapping
     mapping(uint256 => SaleInfo) public SaleInfoMap; // sale mapping
     mapping(address => UserInfo) public UserInfoMap; // user mapping
-    mapping(uint256=>uint256[]) public tierMap;
+    mapping(uint256 => uint256[]) public tierMap;
 
     function initialize(
         string memory _name,
@@ -93,35 +93,40 @@ contract ASTNftPresale is
         uint256 _ddays
     ) public onlyOwner returns (uint256) {
         saleId++;
-        SaleInfo memory details;
-        details.cost = _cost;
-        details.mintCost = _mintCost;
-        details.maxSupply = _maxSupply;
-        details.start = _start;
-        details.ddays = _ddays;
-        SaleInfoMap[saleId] = details;
+        SaleInfoMap[saleId] = SaleInfo(
+            _cost,
+            _mintCost,
+            _maxSupply,
+            _start,
+            _ddays
+        );
         emit SaleStart(saleId);
         return saleId;
     }
 
-    function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner{
-        
+    function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner {
         tierMap[_amount][0] = _min;
         tierMap[_amount][1] = _max;
     }
 
     // Eligibility Criteria
-    function checking(address _add, uint256 _amount) internal returns (uint256) {
+    function checking(
+        address _add,
+        uint256 _amount
+    ) internal returns (uint256) {
         uint256 bal = balanceOf(_add);
         require(bal >= 100, "Insufficient balance");
         uint256 count;
-        require(tierMap[_amount][0] >= bal && tierMap[_amount][1]<=bal, "not enough balance for purchase");
-        if(_amount == 1){
-            count=1;
-        } else if(_amount == 2){
-            count=2;
-        } else if(_amount==3){
-            count=3;
+        require(
+            tierMap[_amount][0] >= bal && tierMap[_amount][1] <= bal,
+            "not enough balance for purchase"
+        );
+        if (_amount == 1) {
+            count = 1;
+        } else if (_amount == 2) {
+            count = 2;
+        } else if (_amount == 3) {
+            count = 3;
         }
 
         // tierMap[1]=[100,300];
@@ -129,7 +134,7 @@ contract ASTNftPresale is
         // tierMap[3]=[601,800];
 
         UserInfo memory user = UserInfoMap[_add];
-        user.limit = user.lastbuy == 0 ? bal: bal - user.tokens;
+        user.limit = user.lastbuy == 0 ? bal : bal - user.tokens;
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
@@ -138,21 +143,21 @@ contract ASTNftPresale is
     // Presale Buy
     function buyPresale(address to, uint256 _amount) public payable {
         require(presaleM, "Sale is off");
-       
-      
-       uint256 buylimit = checking(to, _amount);
-       require(_amount <= buylimit, "buying limit exceeded");
-       SaleInfo memory details = SaleInfoMap[saleId];
+
+        uint256 buylimit = checking(to, _amount);
+        require(_amount <= buylimit, "buying limit exceeded");
+        SaleInfo memory detail = SaleInfoMap[saleId];
         UserInfo memory user = UserInfoMap[to];
 
         require(
-            msg.value >= (_amount * (details.cost + details.mintCost)),
+            msg.value >= (_amount * (detail.cost + detail.mintCost)),
             "Insufficient value"
         );
         require(
-            tokenIdCount.current() + _amount <= details.maxSupply,
+            tokenIdCount.current() + _amount <= detail.maxSupply,
             "Not enough tokens"
         );
+      
         user.tokens += _amount;
         user.lastbuy = block.timestamp;
         user.limitRemain = buylimit - _amount;
@@ -167,6 +172,37 @@ contract ASTNftPresale is
             i++;
         }
         emit BoughtNFT(to, _amount, saleId);
+    }
+
+
+    function buyPublic(uint256 _amount) public {
+        require(presaleM, "Presale is Off");
+        UserInfo memory user = UserInfoMap[_msgSender()];
+        SaleInfo memory detail = SaleInfoMap[saleId];
+
+       require(
+            msg.value >= (_amount * (detail.cost + detail.mintCost)),
+            "Insufficient value"
+        );
+        require(
+            msg.value >= (_amount * (detail.cost +detail.mint_Cost)),
+            "Insufficient funds"
+        );
+
+        user.NftTokens += _amount;
+        user.createdOn = block.timestamp;
+
+        uint256 i=0;
+
+        while( i < _amount) {
+            tokenIdCount.increment();
+            uint256 _id = tokenIdCount.current();
+            _safeMint(_msgSender(), _id);
+            string memory _tokenURI = tokenURI(_id);
+            _setTokenURI(_id, _tokenURI);
+        }
+
+        emit BoughtNFT(_msgSender(), _amount, saleId);
     }
 
     function safeTransferFrom(

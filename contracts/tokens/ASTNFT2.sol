@@ -9,6 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
+
 //import "@openzeppelin/contracts-upgradeable/contracts/token/common/ERC2981Upgradeable.sol";
 
 contract ASTNftPresale is
@@ -19,7 +20,6 @@ contract ASTNftPresale is
     PausableUpgradeable,
     OwnableUpgradeable,
     ERC721BurnableUpgradeable
-    
 {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private tokenIdCount;
@@ -59,8 +59,6 @@ contract ASTNftPresale is
     // Mapping
     mapping(uint256 => SaleInfo) public SaleInfoMap; // sale mapping
     mapping(address => UserInfo) public UserInfoMap; // user mapping
-    // mapping (uint256 => uint256[]) tierMap;
-    // mapping(uint256=>mapping(uint256=> uint256))
 
     function initialize(
         string memory _name,
@@ -73,10 +71,11 @@ contract ASTNftPresale is
         __Pausable_init();
         __Ownable_init();
         __ERC721Burnable_init();
-        __ERC2981_init();
-        __ERC2981_init_unchained();
+        // __ERC2981_init();
+        // __ERC2981_init_unchained();
     }
 
+    // Toggle Sales
     function togglePreSale() public onlyOwner {
         presaleM = !presaleM;
     }
@@ -92,7 +91,7 @@ contract ASTNftPresale is
         uint256 _maxSupply,
         uint256 _start,
         uint256 _ddays
-    ) public onlyOwner returns(uint256){
+    ) public onlyOwner returns (uint256) {
         saleId++;
         SaleInfo memory details;
         details.cost = _cost;
@@ -121,7 +120,7 @@ contract ASTNftPresale is
         }
 
         UserInfo memory user = UserInfoMap[_add];
-        user.limit = user.lastbuy==0?count: count-user.tokens;
+        user.limit = user.lastbuy == 0 ? count : count - user.tokens;
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
@@ -134,7 +133,7 @@ contract ASTNftPresale is
         require(_amount <= buylimit, "buying limit exceeded");
         SaleInfo memory details = SaleInfoMap[saleId];
         UserInfo memory user = UserInfoMap[to];
-        
+
         require(
             msg.value >= (_amount * (details.cost + details.mintCost)),
             "Insufficient value"
@@ -157,6 +156,33 @@ contract ASTNftPresale is
             i++;
         }
         emit BoughtNFT(to, _amount, saleId);
+    }
+
+    function buyPublic(uint256 _amount) public {
+        require(presaleM, "Presale is Off");
+        UserInfo memory user = UserInfoMap[_msgSender()];
+        SaleInfo memory detail = SaleInfoMap[saleId];
+
+        require(tokenIdCount.current() + _amount < detail.maxSupply);
+        require(
+            msg.value >= (_amount * (detail.cost +detail.mint_Cost)),
+            "Insufficient funds"
+        );
+
+        user.NftTokens += _amount;
+        user.createdOn = block.timestamp;
+
+        uint256 i=0;
+
+        while( i < _amount) {
+            tokenIdCount.increment();
+            uint256 _id = tokenIdCount.current();
+            _safeMint(_msgSender(), _id);
+            string memory _tokenURI = tokenURI(_id);
+            _setTokenURI(_id, _tokenURI);
+        }
+
+        emit BoughtNFT(_msgSender(), _amount, saleId);
     }
 
     function safeTransferFrom(
