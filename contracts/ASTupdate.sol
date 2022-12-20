@@ -169,7 +169,7 @@ contract ASTNftPresale is
       
         user.tokens += _amount;
         user.lastbuy = block.timestamp;
-        user.limitRemain = buylimit - _amount;
+        user.limitRemain = buylimit - _amount;  
         // user.
         uint256 i = 1;
         while (i <= _amount) {
