@@ -104,11 +104,8 @@ contract ASTNftPresale is
         return saleId;
     }
 
-<<<<<<< HEAD
+
     function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner {
-=======
-    function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner
->>>>>>> ced7f8d96aeb7521505658c7a936a5be963a674f
         tierMap[_amount][0] = _min;
         tierMap[_amount][1] = _max;
     }
