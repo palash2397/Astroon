@@ -66,9 +66,9 @@ contract ASTNftPresale is
     function initialize(
         string memory _name,
         string memory _symbol,
-        string memory _baseUri,
-        address _tokenAdd
-    ) public initializer {
+        string memory _baseUri
+  
+      ) public initializer {
         __ERC721_init(_name, _symbol, _baseURI);
         __ERC721URIStorage_init();
         __ERC721Enumerable_init();
