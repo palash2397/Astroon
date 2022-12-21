@@ -75,7 +75,7 @@ contract ASTNftPresale is
         __ERC721Burnable_init();
         // __ERC2981_init();
         // __ERC2981_init_unchained();
-        baseURI=_baseUri;
+       
 
 
     }
