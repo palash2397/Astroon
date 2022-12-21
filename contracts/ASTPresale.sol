@@ -24,7 +24,7 @@ contract ASTNftPresale is
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private tokenIdCount;
 
-    IERC721MetadataUpgradeable token;
+   
 
     uint256 private saleId;
     string public baseURI;
