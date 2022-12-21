@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
+//import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 //import "@openzeppelin/contracts-upgradeable/contracts/token/common/ERC2981Upgradeable.sol";
 
 contract ASTNftPresale is
@@ -78,7 +78,7 @@ contract ASTNftPresale is
         __ERC2981_init();
         __ERC2981_init_unchained();
         baseURI=_baseUri;
-        token = IERC721MetadataUpgradeable(_tokenAdd);
+      
 
     }
 
