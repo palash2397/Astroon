@@ -104,11 +104,8 @@ contract ASTNftPresale is
         return saleId;
     }
 
-<<<<<<< HEAD
+
     function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner {
-=======
-    function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner
->>>>>>> ced7f8d96aeb7521505658c7a936a5be963a674f
         tierMap[_amount][0] = _min;
         tierMap[_amount][1] = _max;
     }
@@ -139,11 +136,7 @@ contract ASTNftPresale is
         // tierMap[3]=[601,800];
 
         UserInfo memory user = UserInfoMap[_add];
-<<<<<<< HEAD
-        user.limit = user.lastbuy == 0 ? bal : bal - user.tokens;
-=======
         user.limit = user.lastbuy == 0 ? count: count - user.tokens;
->>>>>>> ced7f8d96aeb7521505658c7a936a5be963a674f
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
@@ -152,12 +145,10 @@ contract ASTNftPresale is
     // Presale Buy
     function buyPresale(address to, uint256 _amount) public payable {
         require(presaleM, "Sale is off");
-
         uint256 buylimit = checking(to, _amount);
         require(_amount <= buylimit, "buying limit exceeded");
         SaleInfo memory detail = SaleInfoMap[saleId];
         UserInfo memory user = UserInfoMap[to];
-
         require(
             msg.value >= (_amount * (detail.cost + detail.mintCost)),
             "Insufficient value"
@@ -170,7 +161,7 @@ contract ASTNftPresale is
         user.tokens += _amount;
         user.lastbuy = block.timestamp;
         user.limitRemain = buylimit - _amount;  
-        // user.
+  
         uint256 i = 1;
         while (i <= _amount) {
             tokenIdCount.increment();
@@ -183,16 +174,12 @@ contract ASTNftPresale is
         emit BoughtNFT(to, _amount, saleId);
     }
 
-
+    // Public sale
     function buyPublic(uint256 _amount) public {
         require(presaleM, "Presale is Off");
         UserInfo memory user = UserInfoMap[_msgSender()];
         SaleInfo memory detail = SaleInfoMap[saleId];
 
-       require(
-            msg.value >= (_amount * (detail.cost + detail.mintCost)),
-            "Insufficient value"
-        );
         require(
             msg.value >= (_amount * (detail.cost +detail.mint_Cost)),
             "Insufficient funds"
@@ -202,7 +189,6 @@ contract ASTNftPresale is
         user.createdOn = block.timestamp;
 
         uint256 i=0;
-
         while( i < _amount) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
