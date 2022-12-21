@@ -66,8 +66,7 @@ contract ASTNftPresale is
     function initialize(
         string memory _name,
         string memory _symbol,
-        string memory _baseUri,
-        address _tokenAdd
+        string memory _baseUri       
     ) public initializer {
         __ERC721_init(_name, _symbol, _baseURI);
         __ERC721URIStorage_init();
@@ -75,10 +74,10 @@ contract ASTNftPresale is
         __Pausable_init();
         __Ownable_init();
         __ERC721Burnable_init();
-        __ERC2981_init();
-        __ERC2981_init_unchained();
+        // __ERC2981_init();
+        // __ERC2981_init_unchained();
         baseURI=_baseUri;
-        token = IERC721MetadataUpgradeable(_tokenAdd);
+        
 
     }
 
