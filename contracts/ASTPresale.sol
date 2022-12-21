@@ -9,7 +9,7 @@ import "@openzeppelin/contracts-upgradeable/access/OwnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/ERC721BurnableUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
-
+import "@openzeppelin/contracts-upgradeable/token/ERC721/extensions/IERC721MetadataUpgradeable.sol";
 //import "@openzeppelin/contracts-upgradeable/contracts/token/common/ERC2981Upgradeable.sol";
 
 contract ASTNftPresale is
@@ -23,6 +23,8 @@ contract ASTNftPresale is
 {
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private tokenIdCount;
+
+    IERC721MetadataUpgradeable token;
 
     uint256 private saleId;
     string public baseURI;
@@ -59,11 +61,13 @@ contract ASTNftPresale is
     // Mapping
     mapping(uint256 => SaleInfo) public SaleInfoMap; // sale mapping
     mapping(address => UserInfo) public UserInfoMap; // user mapping
+    mapping(uint256 => uint256[]) public tierMap;
 
     function initialize(
         string memory _name,
         string memory _symbol,
-        string memory _BaseUri
+        string memory _baseUri,
+        address _tokenAdd
     ) public initializer {
         __ERC721_init(_name, _symbol, _baseURI);
         __ERC721URIStorage_init();
@@ -71,11 +75,13 @@ contract ASTNftPresale is
         __Pausable_init();
         __Ownable_init();
         __ERC721Burnable_init();
-        // __ERC2981_init();
-        // __ERC2981_init_unchained();
+        __ERC2981_init();
+        __ERC2981_init_unchained();
+        baseURI=_baseUri;
+        token = IERC721MetadataUpgradeable(_tokenAdd);
+
     }
 
-    // Toggle Sales
     function togglePreSale() public onlyOwner {
         presaleM = !presaleM;
     }
@@ -93,59 +99,67 @@ contract ASTNftPresale is
         uint256 _ddays
     ) public onlyOwner returns (uint256) {
         saleId++;
-        SaleInfo memory details;
-        details.cost = _cost;
-        details.mintCost = _mintCost;
-        details.maxSupply = _maxSupply;
-        details.start = _start;
-        details.ddays = _ddays;
-        SaleInfoMap[saleId] = details;
+        SaleInfoMap[saleId] = SaleInfo(
+            _cost,
+            _mintCost,
+            _maxSupply,
+            _start,
+            _ddays
+        );
         emit SaleStart(saleId);
         return saleId;
     }
 
-    // Eligibility Criteria
-    function checking(address _add) internal returns (uint256) {
+
+    function setTireMap(uint _amount, uint _min, uint _max) external onlyOwner {
+        tierMap[_amount][0] = _min;
+        tierMap[_amount][1] = _max;
+    }
+   
+  // Eligibility Criteria
+    function checking(
+        address _add,
+        uint256 _amount
+    ) internal returns (uint256) {
         uint256 bal = balanceOf(_add);
+        require(_amount <= 3,"Invalid Amount"); 
         require(bal >= 100, "Insufficient balance");
         uint256 count;
-        if (bal >= 100 && bal <= 300) {
-            count = 1;
-        } else if (bal > 300 && bal <= 600) {
-            count = 2;
-        } else if (bal > 600 && bal <= 800) {
-            count = 3;
-        } else if (bal > 800) {
-            count = 4;
-        }
+        require(
+            tierMap[_amount][0] >= bal && tierMap[_amount][1] <= bal,
+            "not enough balance for purchase"
+        );
+         
+         count = _amount;
 
         UserInfo memory user = UserInfoMap[_add];
-        user.limit = user.lastbuy == 0 ? count : count - user.tokens;
+        user.limit = user.lastbuy == 0 ? count: count - user.tokens;
         user.purchaseAt = bal;
         user.whitelisted = true;
         return user.limit;
     }
 
+   
+
     // Presale Buy
     function buyPresale(address to, uint256 _amount) public payable {
         require(presaleM, "Sale is off");
-        uint256 buylimit = checking(to);
+        uint256 buylimit = checking(to, _amount);
         require(_amount <= buylimit, "buying limit exceeded");
-        SaleInfo memory details = SaleInfoMap[saleId];
+        SaleInfo memory detail = SaleInfoMap[saleId];
         UserInfo memory user = UserInfoMap[to];
-
         require(
-            msg.value >= (_amount * (details.cost + details.mintCost)),
+            msg.value >= (_amount * (detail.cost + detail.mintCost)),
             "Insufficient value"
         );
         require(
-            tokenIdCount.current() + _amount <= details.maxSupply,
+            tokenIdCount.current() + _amount <= detail.maxSupply,
             "Not enough tokens"
         );
         user.tokens += _amount;
         user.lastbuy = block.timestamp;
-        user.limitRemain = buylimit - _amount;
-        // user.
+        user.limitRemain = buylimit - _amount;  
+      
         uint256 i = 1;
         while (i <= _amount) {
             tokenIdCount.increment();
@@ -158,31 +172,30 @@ contract ASTNftPresale is
         emit BoughtNFT(to, _amount, saleId);
     }
 
+
     function buyPublic(uint256 _amount) public {
         require(presaleM, "Presale is Off");
         UserInfo memory user = UserInfoMap[_msgSender()];
         SaleInfo memory detail = SaleInfoMap[saleId];
 
-        require(tokenIdCount.current() + _amount < detail.maxSupply);
-        require(
-            msg.value >= (_amount * (detail.cost + detail.mint_Cost)),
-            "Insufficient funds"
+       require(
+            msg.value >= (_amount * (detail.cost + detail.mintCost)),
+            "Insufficient value"
         );
-
+   
         user.NftTokens += _amount;
         user.createdOn = block.timestamp;
 
-        uint256 i = 0;
-
-        while (i < _amount) {
+        uint256 i=0;
+        while( i < _amount) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
             _safeMint(_msgSender(), _id);
             string memory _tokenURI = tokenURI(_id);
             _setTokenURI(_id, _tokenURI);
         }
-
         emit BoughtNFT(_msgSender(), _amount, saleId);
+
     }
 
     function safeTransferFrom(
