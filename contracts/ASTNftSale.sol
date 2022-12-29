@@ -13,7 +13,8 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract ASTNftPresale is
+
+contract ASTNftSale is
     Initializable,
     ERC721Upgradeable,
     ERC721URIStorageUpgradeable,
@@ -23,22 +24,19 @@ contract ASTNftPresale is
     ERC721BurnableUpgradeable,
     ERC2981Upgradeable
 {
- 
-    enum SALETYPE {
-        PRIVATE_SALE,
-        PUBLIC_SALE
-    }
+
+    enum SALETYPE {PRIVATE_SALE, PUBLIC_SALE}
     using Strings for uint256;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private tokenIdCount;
 
-    IERC20MetadataUpgradeable token;
+    IERC20MetadataUpgradeable public token;
 
     uint256 private saleId;
     string public baseURI;
     string public notRevealedUri;
     string public baseExtension;
-    bool public revealed;
+    bool public revealed ;
     uint256 maxPresaleLimit;
     uint256 minToken;
 
@@ -61,10 +59,7 @@ contract ASTNftPresale is
 
     // Mapping
     mapping(SALETYPE => SaleInfo) public SaleInfoMap; // sale mapping
-    mapping(uint256 => tierInfo) public tierMap;
-      uint256[8000] private nftQt;
-    uint256 private length = 8000;
-    uint256 private ranNum;
+    mapping(uint256=>tierInfo) public tierMap;
 
     function initialize(
         string memory _name,
@@ -103,7 +98,7 @@ contract ASTNftPresale is
         uint256 _startTime,
         uint256 _endTime
     ) external onlyOwner returns (uint256) {
-        SaleInfoMap[saleType] = SaleInfo(
+        SaleInfoMap[saleType] = SaleInfo (
             _cost,
             _mintCost,
             _maxSupply,
@@ -114,67 +109,34 @@ contract ASTNftPresale is
         return saleId;
     }
 
-   function getRandom() private returns(uint256) {
-            require(length != 0,"Minting limit exceeds");
-            uint256 ran = uint(keccak256(abi.encodePacked(block.timestamp, block.difficulty)));
-            uint256 ranId = ran % length;
-            if(nftQt[ranId] == 0)
-                ranNum = ranId;
-            else
-                ranNum = nftQt[ranId];
-            nftQt[ranId] =  nftQt[length-1] == 0 ? length-1 : nftQt[length-1];
-            delete nftQt[length-1];
-            length--;
-            return ranNum;
-    }
-
-
- 
-
-    function getNumber(uint256 tokenLength)
-        internal
-        returns (uint256[] memory)
-    {
-        uint256[] memory result = new uint256[](tokenLength);
-        for (uint256 i = 0; i < tokenLength; i++) {
-            result[i] = getRandom() + 1;
-        }
-        return result;
-    }
-
-
-
-
-    function setTireMap(
-        uint256 category,
-        uint256 _min,
-        uint256 _max
-    ) external onlyOwner {
+    function setTireMap(uint256 category, uint256 _min, uint256 _max) external onlyOwner {
         tierMap[category].minValue = _min;
         tierMap[category].maxValue = _max;
     }
-
+    
     function setMinimumToken(uint256 _minToken) external onlyOwner {
         minToken = _minToken;
+    }
+
+    function UpdateTokenAddress(address _tokenAddr) external onlyOwner{
+        token = IERC20MetadataUpgradeable(_tokenAddr);
+
     }
 
     function validateNftLimit(address _addr, uint256 nftQty) internal view {
         uint256 tokenBalance = token.balanceOf(_addr);
         uint256 nftBalance = balanceOf(_addr);
-        require(tokenBalance >= minToken, "Insufficient balance");
-        require(
+        require (
+            tokenBalance >= minToken,
+            "Insufficient balance"
+        );
+        require (
             nftBalance + nftQty <= maxPresaleLimit,
             "buying Limit exceeded"
         );
-        uint256 count = tokenBalance >= tierMap[1].minValue &&
-            tokenBalance <= tierMap[1].maxValue
-            ? 1
-            : tokenBalance >= tierMap[2].minValue &&
-                tokenBalance <= tierMap[2].maxValue
-            ? 2
-            : tokenBalance >= tierMap[3].minValue &&
-                tokenBalance <= tierMap[3].maxValue
-            ? 3
+        uint256 count = tokenBalance >= tierMap[1].minValue && tokenBalance <= tierMap[1].maxValue ? 1 
+            : tokenBalance >= tierMap[2].minValue && tokenBalance <= tierMap[2].maxValue ? 2 
+            : tokenBalance >= tierMap[3].minValue && tokenBalance <= tierMap[3].maxValue ? 3 
             : 4;
         require(
             count >= nftBalance && (count - nftBalance) >= nftQty,
@@ -182,11 +144,10 @@ contract ASTNftPresale is
         );
     }
 
-
-    function buyPresale(uint256 nftQty) external payable{
+    function buyPresale(uint256 nftQty) external payable {
         require(
-            SaleInfoMap[SALETYPE.PRIVATE_SALE].startTime <= block.timestamp &&
-                SaleInfoMap[SALETYPE.PRIVATE_SALE].endTime >= block.timestamp,
+            SaleInfoMap[SALETYPE.PRIVATE_SALE].startTime <= block.timestamp && 
+            SaleInfoMap[SALETYPE.PRIVATE_SALE].endTime >= block.timestamp,
             "PrivateSale is InActive"
         );
         SaleInfo memory details = SaleInfoMap[SALETYPE.PRIVATE_SALE];
@@ -195,51 +156,49 @@ contract ASTNftPresale is
             msg.value == (nftQty * (details.cost + details.mintCost)),
             "Insufficient value"
         );
-
-        
-            
-        uint256[] memory _id = getNumber( nftQty);
-           
-        for (uint256 i; i < nftQty; ) {
-            _safeMint(_msgSender(), _id[i]);
-             string memory _tokenURI = tokenURI(_id[i]);
-            _setTokenURI(_id[i], _tokenURI);
+        require(
+            tokenIdCount.current() + nftQty <= details.maxSupply,
+            "Not enough tokens"
+        );
+        for(uint256 i; i < nftQty;) {
+            tokenIdCount.increment();
+            uint256 _id = tokenIdCount.current();
+            _safeMint(_msgSender(), _id);
             i++;
         }
-
-        
         payable(owner()).transfer(msg.value);
         emit BoughtNFT(_msgSender(), nftQty, saleId);
     }
 
-    function buyPublicSale(uint256 nftQty) external payable {
+    function buyPublicSale(uint256 _amount) external payable {
         require(
             SaleInfoMap[SALETYPE.PUBLIC_SALE].startTime <= block.timestamp &&
-                SaleInfoMap[SALETYPE.PUBLIC_SALE].endTime >= block.timestamp,
+            SaleInfoMap[SALETYPE.PUBLIC_SALE].endTime >= block.timestamp,
             "PublicSale is InActive"
         );
         SaleInfo memory detail = SaleInfoMap[SALETYPE.PUBLIC_SALE];
         require(
-            msg.value == (nftQty * (detail.cost + detail.mintCost)),
+            msg.value == (_amount * (detail.cost + detail.mintCost)),
             "Insufficient value"
         );
-        uint256[] memory _id = getNumber( nftQty);
-        
-        for (uint256 i; i < nftQty; ) {
-            _safeMint(_msgSender(), _id[i]);
-             string memory _tokenURI = tokenURI(_id[i]);
-            _setTokenURI(_id[i], _tokenURI);
+        for (uint256 i = 0 ; i < _amount;) {
+            tokenIdCount.increment();
+            uint256 _id = tokenIdCount.current();
+            _safeMint(_msgSender(), _id);
+            string memory _tokenURI = tokenURI(_id);
+            _setTokenURI(_id, _tokenURI);
             i++;
         }
         payable(owner()).transfer(msg.value);
-        emit BoughtNFT(_msgSender(), nftQty, saleId);
+        emit BoughtNFT(_msgSender(), _amount, saleId);
+
     }
 
     function safeTransferFrom(
         address from,
         address to,
         uint256 tokenId
-    ) public override(ERC721Upgradeable, IERC721Upgradeable) {
+    ) public override (ERC721Upgradeable, IERC721Upgradeable) {
         require(
             _isApprovedOrOwner(_msgSender(), tokenId),
             "ERC721: caller is not token owner nor approved"
@@ -260,7 +219,9 @@ contract ASTNftPresale is
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
 
-    function tokenURI(uint256 tokenId)
+    function tokenURI(
+        uint256 tokenId
+    )
         public
         view
         virtual
@@ -301,17 +262,13 @@ contract ASTNftPresale is
         baseURI = _newBaseURI;
     }
 
-    function setNotRevealedURI(string memory _notRevealedURI)
-        external
-        onlyOwner
-    {
+    function setNotRevealedURI(string memory _notRevealedURI) external onlyOwner {
         notRevealedUri = _notRevealedURI;
     }
 
-    function setBaseExtension(string memory _newBaseExtension)
-        external
-        onlyOwner
-    {
+    function setBaseExtension(
+        string memory _newBaseExtension
+    ) external onlyOwner {
         baseExtension = _newBaseExtension;
     }
 
@@ -319,17 +276,18 @@ contract ASTNftPresale is
         SaleInfoMap[saleType].cost = _newCost;
     }
 
-    function setMintCost(SALETYPE saleType, uint256 _newMintCost)
-        external
-        onlyOwner
-    {
+    function setMintCost(
+        SALETYPE saleType,
+        uint256 _newMintCost
+    ) external onlyOwner {
         SaleInfoMap[saleType].mintCost = _newMintCost;
     }
 
     function isActive(SALETYPE saleType) external view returns (bool) {
         SaleInfo memory detail = SaleInfoMap[saleType];
         return (block.timestamp >= detail.startTime && // Must be after the start date
-            block.timestamp <= detail.endTime); // Must be before the end date
+            block.timestamp <= detail.endTime // Must be before the end date
+        );
     }
 
     function pause() external onlyOwner {
@@ -344,23 +302,19 @@ contract ASTNftPresale is
         payable(owner()).transfer(address(this).balance);
     }
 
-    function _burn(uint256 tokenId)
-        internal
-        override(ERC721Upgradeable, ERC721URIStorageUpgradeable)
-    {
+    function _burn(
+        uint256 tokenId
+    ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
         super._burn(tokenId);
     }
 
     function supportsInterface(bytes4 interfaceId)
         public
         view
-        override(
-            ERC721Upgradeable,
-            ERC721EnumerableUpgradeable,
-            ERC2981Upgradeable
-        )
-        returns (bool)
+        override(ERC721Upgradeable, ERC721EnumerableUpgradeable, ERC2981Upgradeable)
+        returns (bool) 
     {
         return super.supportsInterface(interfaceId);
     }
+
 }
