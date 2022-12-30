@@ -110,6 +110,7 @@ contract ASTNftPresale is
             _startTime,
             _endTime
         );
+        
         emit SaleStart(saleId);
         return saleId;
     }
