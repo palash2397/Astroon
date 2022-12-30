@@ -66,8 +66,8 @@ contract ASTNftSale is
     }
 
     // Events
-    event SaleStart(uint256 saleId);
-    event BoughtNFT(address indexed to, uint256 amount, uint256 saleId,Category indexed category,  string metadata);
+    event SaleStart(SALETYPE saletType);
+    event BoughtNFT(address indexed to, uint256 amount, SALETYPE saleId,Category indexed category,  string metadata);
 
       
 
@@ -76,7 +76,7 @@ contract ASTNftSale is
     // Mapping
     mapping(uint256 => Category) public categoryOf; // ID to category
     mapping(Category => uint256[]) public tokensByCategory; // array of token IDs
-    mapping(uint256 => string) public metadataOf; // ID to metadata
+   
 
     mapping(address => UserInfo) public UserInfoMap; // user mapping
     mapping(SALETYPE => SaleInfo) public SaleInfoMap; // sale mapping
@@ -118,7 +118,7 @@ contract ASTNftSale is
         uint256 _maxSupply,
         uint256 _startTime,
         uint256 _endTime
-    ) external onlyOwner returns (uint256) {
+    ) external onlyOwner returns (SALETYPE) {
         SaleInfoMap[saleType] = SaleInfo(
             _cost,
             _mintCost,
@@ -126,8 +126,8 @@ contract ASTNftSale is
             _startTime,
             _endTime
         );
-        emit SaleStart(saleId);
-        return saleId;
+        emit SaleStart(saleType);
+        return saleType;
     }
 
     function setTireMap(
@@ -203,15 +203,14 @@ contract ASTNftSale is
             uint256 _id = tokenIdCount.current();
                 tokensByCategory[_category].push(_id);
                 categoryOf[_id] = _category;
-                metadataOf[_id] = _metadata;
+                
             _safeMint(_msgSender(), _id);
-             string memory _tokenURI = tokenURI(_id);
-            _setTokenURI(_id, _tokenURI);
+            _setTokenURI(_id,  _metadata);
             i++;
         }
         payable(owner()).transfer(msg.value);
-        emit BoughtNFT(_msgSender(), nftQty, saleId,_category, _metadata);
-        // emit BoughtNFT(_msgSender(), nftQty, saleId,_category, _metadata);
+    
+     emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PRIVATE_SALE,_category, _metadata);
     }
 
     function buyPublicSale(uint256 _amount, Category _category, string memory _metadata) external payable {
@@ -230,14 +229,14 @@ contract ASTNftSale is
             uint256 _id = tokenIdCount.current();
                 tokensByCategory[_category].push(_id);
                 categoryOf[_id] = _category;
-                metadataOf[_id] = _metadata;
+                
             _safeMint(_msgSender(), _id);
-             string memory _tokenURI = tokenURI(_id);
-            _setTokenURI(_id, _tokenURI);
+            
+            _setTokenURI(_id,  _metadata);
             i++;
         }
         payable(owner()).transfer(msg.value);
-        emit BoughtNFT(_msgSender(), _amount, saleId,_category, _metadata);
+        emit BoughtNFT(_msgSender(), _amount, SALETYPE.PUBLIC_SALE,_category, _metadata);
     }
 
     function safeTransferFrom(
