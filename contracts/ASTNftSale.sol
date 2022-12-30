@@ -211,6 +211,7 @@ contract ASTNftSale is
         }
         payable(owner()).transfer(msg.value);
         emit BoughtNFT(_msgSender(), nftQty, saleId,_category, _metadata);
+        // emit BoughtNFT(_msgSender(), nftQty, saleId,_category, _metadata);
     }
 
     function buyPublicSale(uint256 _amount, Category _category, string memory _metadata) external payable {
