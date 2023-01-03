@@ -28,7 +28,7 @@ contract ASTNftSale is
         PUBLIC_SALE
     }
 
-    enum Category {
+    enum CATEGORY {
         Gold,
         Silver,
         Bronze
@@ -66,18 +66,17 @@ contract ASTNftSale is
         address indexed to,
         uint256 amount,
         SALETYPE saleId,
-        Category indexed category,
-        string metadata
+        CATEGORY[]  category
     );
 
     // Mapping
-    mapping(uint256 => Category) public categoryOf; // ID to category
-    mapping(Category => uint256[]) public tokensByCategory; // array of token IDs
+    mapping(uint256 => CATEGORY) public categoryOf; // ID to category
+    mapping(CATEGORY => uint256[]) public tokensByCategory; // array of token IDs
 
     //mapping(address => UserInfo) public UserInfoMap; // user mapping
     mapping(SALETYPE => SaleInfo) public SaleInfoMap; // sale mapping
     mapping(uint256 => tierInfo) public tierMap; // tier mapping
-    mapping(uint256 => mapping(address => uint)) public usertime;
+    mapping(uint256 => mapping(address => uint256)) public lastPurchasedAt;
 
     function initialize(
         string memory _name,
@@ -128,16 +127,27 @@ contract ASTNftSale is
     }
 
     function setTireMap(
-        uint256 category,
+        uint256 _tierLevel,
         uint256 _min,
         uint256 _max
     ) external onlyOwner {
-        tierMap[category].minValue = _min;
-        tierMap[category].maxValue = _max;
+        tierMap[_tierLevel].minValue = _min;
+        tierMap[_tierLevel].maxValue = _max;
     }
 
     function setMinimumToken(uint256 _minToken) external onlyOwner {
         minToken = _minToken;
+    }
+
+    function getCategory(uint256 tokenId) external view returns(CATEGORY) {
+        return categoryOf[tokenId];
+    }
+
+
+    function getAllTokenByCategory(
+        CATEGORY nftType
+    ) external view returns (uint256[] memory) {
+        return tokensByCategory[nftType];
     }
 
     function UpdateTokenAddress(address _tokenAddr) external onlyOwner {
@@ -173,86 +183,69 @@ contract ASTNftSale is
         uint256 tokenId,
         address userAddress
     ) external view returns (uint256) {
-        return usertime[tokenId][userAddress];
+        return lastPurchasedAt[tokenId][userAddress];
     }
 
-    function buyPresale(
-        uint256 nftQty,
-        Category _category,
-        string memory _metadata
-    ) external payable {
+      function buyPresale(CATEGORY[] memory _category, string[] memory _tokenURI, uint256 nftQty) external payable {
         require(
-            SaleInfoMap[SALETYPE.PRIVATE_SALE].startTime <= block.timestamp &&
-                SaleInfoMap[SALETYPE.PRIVATE_SALE].endTime >= block.timestamp,
+            SaleInfoMap[SALETYPE.PRIVATE_SALE].startTime <= block.timestamp && 
+            SaleInfoMap[SALETYPE.PRIVATE_SALE].endTime >= block.timestamp,
             "PrivateSale is InActive"
         );
-        SaleInfo memory details = SaleInfoMap[SALETYPE.PRIVATE_SALE];
-        validateNftLimit(_msgSender(), nftQty);
-
         require(
-            msg.value == (nftQty * (details.cost + details.mintCost)),
+            _category.length == nftQty &&
+            _tokenURI.length == nftQty,
+            "Invalid Length"
+        );
+        validateNftLimit(_msgSender(), nftQty);
+        require(
+            msg.value == (nftQty * (SaleInfoMap[SALETYPE.PRIVATE_SALE].cost + SaleInfoMap[SALETYPE.PRIVATE_SALE].mintCost)),
             "Insufficient value"
         );
         require(
-            tokenIdCount.current() + nftQty <= details.maxSupply,
+            tokenIdCount.current() + nftQty <= SaleInfoMap[SALETYPE.PRIVATE_SALE].maxSupply,
             "Not enough tokens"
         );
-
-        for (uint256 i; i < nftQty; ) {
+        for(uint256 i; i < nftQty;) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
-            tokensByCategory[_category].push(_id);
-            categoryOf[_id] = _category;
-
             _safeMint(_msgSender(), _id);
-            _setTokenURI(_id, _metadata);
+            categoryOf[_id] = _category[i];
+            tokensByCategory[_category[i]].push(_id);
+            _setTokenURI(_id, _tokenURI[i]);
             i++;
         }
         payable(owner()).transfer(msg.value);
+        emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PRIVATE_SALE, _category);
 
-        emit BoughtNFT(
-            _msgSender(),
-            nftQty,
-            SALETYPE.PRIVATE_SALE,
-            _category,
-            _metadata
-        );
     }
 
-    function buyPublicSale(
-        uint256 _amount,
-        Category _category,
-        string memory _metadata
-    ) external payable {
+    function buyPublicSale(CATEGORY[] memory _category, string[] memory _tokenURI, uint256 nftQty) external payable {
         require(
             SaleInfoMap[SALETYPE.PUBLIC_SALE].startTime <= block.timestamp &&
-                SaleInfoMap[SALETYPE.PUBLIC_SALE].endTime >= block.timestamp,
+            SaleInfoMap[SALETYPE.PUBLIC_SALE].endTime >= block.timestamp,
             "PublicSale is InActive"
         );
-        SaleInfo memory detail = SaleInfoMap[SALETYPE.PUBLIC_SALE];
         require(
-            msg.value == (_amount * (detail.cost + detail.mintCost)),
+            _category.length == nftQty &&
+            _tokenURI.length == nftQty,
+            "Invalid Length"
+        );
+        require(
+            msg.value == (nftQty * (SaleInfoMap[SALETYPE.PUBLIC_SALE].cost + SaleInfoMap[SALETYPE.PUBLIC_SALE].mintCost)),
             "Insufficient value"
         );
-        for (uint256 i; i < _amount; ) {
+        for (uint256 i; i < nftQty;) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
-            tokensByCategory[_category].push(_id);
-            categoryOf[_id] = _category;
-
             _safeMint(_msgSender(), _id);
-
-            _setTokenURI(_id, _metadata);
+            categoryOf[_id] = _category[i];
+            tokensByCategory[_category[i]].push(_id);
+            _setTokenURI(_id, _tokenURI[i]);
             i++;
         }
         payable(owner()).transfer(msg.value);
-        emit BoughtNFT(
-            _msgSender(),
-            _amount,
-            SALETYPE.PUBLIC_SALE,
-            _category,
-            _metadata
-        );
+        emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PUBLIC_SALE, _category);
     }
 
     function safeTransferFrom(
@@ -277,7 +270,7 @@ contract ASTNftSale is
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
         whenNotPaused
     {
-        usertime[tokenId][to] = block.timestamp;
+        lastPurchasedAt[tokenId][to] = block.timestamp;
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
         // mapping(uint256=> mapping(address=>uint)) public usertime;
