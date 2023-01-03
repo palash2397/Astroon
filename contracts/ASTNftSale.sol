@@ -28,10 +28,11 @@ contract ASTNftSale is
         PUBLIC_SALE
     }
 
-    enum CATEGORY {
-        Gold,
-        Silver,
-        Bronze
+  enum CATEGORY {
+        BRONZE,
+        SILVER,
+        GOLD,
+        PLATINUM
     }
     using Strings for uint256;
     using CountersUpgradeable for CountersUpgradeable.Counter;
