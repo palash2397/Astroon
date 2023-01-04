@@ -40,7 +40,7 @@ contract ASTNftSale is
 
     IERC20MetadataUpgradeable public token;
 
-    uint256 private saleId;
+  
     string public baseURI;
     string public notRevealedUri;
     string public baseExtension;
@@ -274,7 +274,7 @@ contract ASTNftSale is
         lastPurchasedAt[tokenId][to] = block.timestamp;
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
 
-        // mapping(uint256=> mapping(address=>uint)) public usertime;
+     
     }
 
     function tokenURI(
@@ -383,24 +383,3 @@ contract ASTNftSale is
     }
 }
 
-//   function mint(Category _category, string memory _metadata) public {
-//         // Generate a new token ID
-//         uint256 newTokenId = tokenId;
-//         //Incrementing token ID
-//         tokenId++;
-
-//         // Add the token to the list of tokens in the specified category
-//         tokensByCategory[_category].push(newTokenId);
-
-//         // Set the category of the new token
-//         categoryOf[newTokenId] = _category;
-
-//         // Set the metadata for the new token
-//         metadataOf[newTokenId] = _metadata;
-
-//         // Mint the new token
-//         super._mint(msg.sender, newTokenId);
-
-//         // Emit the NFTMinted event
-//         emit NFTMinted(newTokenId, _category, _metadata);
-//     }

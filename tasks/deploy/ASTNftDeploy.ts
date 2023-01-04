@@ -3,6 +3,7 @@ const { ethers, upgrades } = require("hardhat");
 
 const add = "0xcAB7E2499Df2e4E4d74AF83f6a0484E25E3F1C32"; //ast token address
 
+
 async function main() {
   const [deployer] = await ethers.getSigners();
 
@@ -11,11 +12,12 @@ async function main() {
   console.log("Account balance:", (await deployer.getBalance()).toString());
 
   const contract = await ethers.getContractFactory("ASTNftSale");
-  const Ast = await upgrades.deployProxy(contract, ["ASTNft", "AST","https://ipfs.io/ipfs/QmSRRqEcDZK3azRebTngLuMoReoe7VMZWF1BeV9YNmXdTv/", add, ".json", 4, 110], { initializer: "initialize"  });
 
+  const Ast = await upgrades.deployProxy(contract, ["ASTRoon", "ASTNft", "https://ipfs.io/ipfs/QmSRRqEcDZK3azRebTngLuMoReoe7VMZWF1BeV9YNmXdTv/", add, ".json", 4, 110], { initializer: "initialize" });
   await Ast.deployed();
-
   console.log("Contract deployed to :", Ast.address);
+
+
 }
 
 main()

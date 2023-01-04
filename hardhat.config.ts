@@ -1,5 +1,6 @@
 import "@nomiclabs/hardhat-etherscan";
 import "@nomiclabs/hardhat-waffle";
+
 import "@openzeppelin/hardhat-upgrades";
 import "@typechain/hardhat";
 import { config as dotenvConfig } from "dotenv";
@@ -39,6 +40,7 @@ const chainIds = {
   goerli:5,
   baobab: 1001,
   klaytn: 8217,
+ 
 };
 
 function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
@@ -73,10 +75,13 @@ function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
   };
 }
 
+
+
 const network = process.env.TESTING === "true" ? "hardhat" : process.env.DEPLOY_NETWORK || "rinkeby";
 
 const config: HardhatUserConfig = {
   defaultNetwork: network,
+ 
   etherscan: {
     apiKey: {
       arbitrumOne: process.env.ARBISCAN_API_KEY || "",
@@ -95,7 +100,7 @@ const config: HardhatUserConfig = {
     enabled: process.env.REPORT_GAS ? true : false,
     excludeContracts: [],
     src: "./contracts",
-    gasPrice: 50000000000,
+    gasPrice: 100000000000,
   },
   networks: {
     hardhat: {
