@@ -106,7 +106,10 @@ const config: HardhatUserConfig = {
     hardhat: {
       accounts: {
         mnemonic,
+       
       },
+      pollingInterval: 8000,
+     
       chainId: chainIds.hardhat,
     },
     arbitrum: getChainConfig("arbitrum-mainnet"),

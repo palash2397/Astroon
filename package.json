@@ -88,15 +88,18 @@
     "prettier": "prettier --config ./.prettierrc.yaml --write \"**/*.{js,json,md,sol,ts,yaml,yml}\"",
     "prettier:check": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,json,md,sol,ts,yaml,yml}\"",
     "test": "hardhat test",
-    "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain"
+    "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain",
+    
   },
   "dependencies": {
+    "@openzeppelin/test-helpers": "^0.5.16",
     "@uniswap/v3-periphery": "^1.4.1",
     "@uniswap/v3-sdk": "^3.9.0",
     "erc721a": "^3.2.0",
     "jsbi": "^4.3.0",
     "merkletreejs": "^0.2.32",
     "node-gyp": "^9.0.0",
+    "truffle-assertions": "^0.9.2",
     "yarn": "^1.22.19"
   }
 }

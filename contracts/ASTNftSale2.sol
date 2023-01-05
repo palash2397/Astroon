@@ -13,7 +13,7 @@ import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol"
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract ASTNftSale is
+contract ASTNftSale2 is
     Initializable,
     ERC721Upgradeable,
     ERC721URIStorageUpgradeable,
@@ -62,7 +62,12 @@ contract ASTNftSale is
 
     // Events
     event SaleStart(SALETYPE saletType);
-    event BoughtNFT(address indexed to, uint256 amount, SALETYPE saleId);
+    event BoughtNFT(
+        address indexed to,
+        uint256 amount,
+        SALETYPE saleId,
+        CATEGORY[] category
+    );
 
     // Mapping
     mapping(uint256 => CATEGORY) public categoryOf; // ID to category
@@ -144,11 +149,6 @@ contract ASTNftSale is
         return tokensByCategory[nftType];
     }
 
-    function updateCategory(CATEGORY[] memory _category, uint256 _id) external {
-        categoryOf[_id] = _category[_id];
-        tokensByCategory[_category[_id]].push(_id);
-    }
-
     function UpdateTokenAddress(address _tokenAddr) external onlyOwner {
         token = IERC20MetadataUpgradeable(_tokenAddr);
     }
@@ -185,13 +185,20 @@ contract ASTNftSale is
         return lastPurchasedAt[tokenId][userAddress];
     }
 
-    function buyPresale(uint256 nftQty) external payable {
+    function buyPresale(
+        CATEGORY[] memory _category,
+        string[] memory _tokenURI,
+        uint256 nftQty
+    ) external payable {
         require(
             SaleInfoMap[SALETYPE.PRIVATE_SALE].startTime <= block.timestamp &&
                 SaleInfoMap[SALETYPE.PRIVATE_SALE].endTime >= block.timestamp,
             "PrivateSale is InActive"
         );
-
+        require(
+            _category.length == nftQty && _tokenURI.length == nftQty,
+            "Invalid Length"
+        );
         validateNftLimit(_msgSender(), nftQty);
         require(
             msg.value ==
@@ -209,17 +216,20 @@ contract ASTNftSale is
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
             _safeMint(_msgSender(), _id);
+            categoryOf[_id] = _category[i];
+            tokensByCategory[_category[i]].push(_id);
+            _setTokenURI(_id, _tokenURI[i]);
             i++;
         }
         payable(owner()).transfer(msg.value);
-        emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PRIVATE_SALE);
+        emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PRIVATE_SALE, _category);
     }
 
     function buyPublicSale(
         CATEGORY[] memory _category,
         string[] memory _tokenURI,
         uint256 nftQty
-    ) external payable {
+    ) external payable{
         require(
             SaleInfoMap[SALETYPE.PUBLIC_SALE].startTime <= block.timestamp &&
                 SaleInfoMap[SALETYPE.PUBLIC_SALE].endTime >= block.timestamp,
@@ -246,7 +256,7 @@ contract ASTNftSale is
             i++;
         }
         payable(owner()).transfer(msg.value);
-        emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PUBLIC_SALE);
+        emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PUBLIC_SALE, _category);
     }
 
     function safeTransferFrom(
