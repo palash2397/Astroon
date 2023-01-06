@@ -144,11 +144,13 @@ contract ASTNftSale is
         return tokensByCategory[nftType];
     }
 
-    function updateCategory(CATEGORY[] memory _category, uint256 _id) external {
-        categoryOf[_id] = _category[_id];
-        tokensByCategory[_category[_id]].push(_id);
+     function updateCategory(CATEGORY[] memory _category, uint256 _id) external  onlyOwner{
+        for (uint256 i; i <_category.length; i++) {
+        categoryOf[_id] = _category[i];
+        tokensByCategory[_category[i]].push(_id);
+        _id++;
+        }
     }
-
     function UpdateTokenAddress(address _tokenAddr) external onlyOwner {
         token = IERC20MetadataUpgradeable(_tokenAddr);
     }
