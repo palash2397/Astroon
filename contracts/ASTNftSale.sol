@@ -143,6 +143,7 @@ contract ASTNftSale is
         _id++;
         }
     }
+
     function UpdateTokenAddress(address _tokenAddr) external onlyOwner {
         token = IERC20MetadataUpgradeable(_tokenAddr);
     }
@@ -210,28 +211,12 @@ contract ASTNftSale is
         emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PRIVATE_SALE);
     }
 
-    function buyPublicSale(
+    function minting(
         CATEGORY[] memory _category,
-        string[] memory _tokenURI,
-        uint256 nftQty
-    ) external payable {
-        require(
-            SaleInfoMap[SALETYPE.PUBLIC_SALE].startTime <= block.timestamp &&
-                SaleInfoMap[SALETYPE.PUBLIC_SALE].endTime >= block.timestamp,
-            "PublicSale is InActive"
-        );
-        require(
-            _category.length == nftQty && _tokenURI.length == nftQty,
-            "Invalid Length"
-        );
-        require(
-            msg.value ==
-                (nftQty *
-                    (SaleInfoMap[SALETYPE.PUBLIC_SALE].cost +
-                        SaleInfoMap[SALETYPE.PUBLIC_SALE].mintCost)),
-            "Insufficient value"
-        );
-        for (uint256 i; i < nftQty; ) {
+        string[] memory _tokenURI
+       
+    ) external onlyOwner {
+        for (uint256 i; i < _category.length; ) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
             _safeMint(_msgSender(), _id);
@@ -240,9 +225,9 @@ contract ASTNftSale is
             _setTokenURI(_id, _tokenURI[i]);
             i++;
         }
-        payable(owner()).transfer(msg.value);
-        emit BoughtNFT(_msgSender(), nftQty, SALETYPE.PUBLIC_SALE);
     }
+    
+      
 
     function safeTransferFrom(
         address from,
