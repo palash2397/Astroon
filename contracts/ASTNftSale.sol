@@ -53,6 +53,7 @@ contract ASTNftSale is
         uint256 maxSupply;
         uint256 startTime;
         uint256 endTime;
+        uint256 remainingSupply;
     }
 
     struct tierInfo {
@@ -65,12 +66,11 @@ contract ASTNftSale is
     event BoughtNFT(address indexed to, uint256 amount, SALETYPE saleId);
 
     // Mapping
-    mapping(uint256 => CATEGORY) public categoryOf; // ID to category
-    mapping(CATEGORY => uint256[]) public tokensByCategory; // array of token IDs
+    mapping(uint256 => CATEGORY) categoryOf; // ID to category
+    mapping(CATEGORY => uint256[])  tokensByCategory; // array of token IDs
 
-    //mapping(address => UserInfo) public UserInfoMap; // user mapping
     mapping(SALETYPE => SaleInfo) public SaleInfoMap; // sale mapping
-    mapping(uint256 => tierInfo) public tierMap; // tier mapping
+    mapping(uint256 => tierInfo)  tierMap; // tier mapping
     mapping(uint256 => mapping(address => uint256)) public lastPurchasedAt;
 
     function initialize(
@@ -108,26 +108,18 @@ contract ASTNftSale is
         uint256 _mintCost,
         uint256 _maxSupply,
         uint256 _startTime,
-        uint256 _endTime
+        uint256 _endTime       
     ) external onlyOwner returns (SALETYPE) {
         SaleInfoMap[saleType] = SaleInfo(
             _cost,
             _mintCost,
             _maxSupply,
             _startTime,
-            _endTime
+            _endTime,
+            _maxSupply
         );
         emit SaleStart(saleType);
         return saleType;
-    }
-
-    function setTireMap(
-        uint256 _tierLevel,
-        uint256 _min,
-        uint256 _max
-    ) external onlyOwner {
-        tierMap[_tierLevel].minValue = _min;
-        tierMap[_tierLevel].maxValue = _max;
     }
 
     function setMinimumToken(uint256 _minToken) external onlyOwner {
@@ -163,14 +155,14 @@ contract ASTNftSale is
             nftBalance + nftQty <= maxPresaleLimit,
             "buying Limit exceeded"
         );
-        uint256 count = tokenBalance >= tierMap[1].minValue &&
-            tokenBalance <= tierMap[1].maxValue
+        uint256 count = tokenBalance >= 100* 10**18 &&
+            tokenBalance <= 300* 10**18
             ? 1
-            : tokenBalance >= tierMap[2].minValue &&
-                tokenBalance <= tierMap[2].maxValue
+            : tokenBalance >= 301* 10**18 &&
+                tokenBalance <= 600* 10**18
             ? 2
-            : tokenBalance >= tierMap[3].minValue &&
-                tokenBalance <= tierMap[3].maxValue
+            : tokenBalance >= 601* 10**18 &&
+                tokenBalance <= 800* 10**18
             ? 3
             : 4;
 
@@ -207,6 +199,7 @@ contract ASTNftSale is
                 SaleInfoMap[SALETYPE.PRIVATE_SALE].maxSupply,
             "Not enough tokens"
         );
+        SaleInfoMap[SALETYPE.PRIVATE_SALE].remainingSupply-=nftQty;
         for (uint256 i; i < nftQty; ) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
