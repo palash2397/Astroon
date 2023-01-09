@@ -40,7 +40,7 @@
     "ethereum-waffle": "^3.4.4",
     "ethers": "^5.6.2",
     "fs-extra": "^10.0.1",
-    "hardhat": "^2.12.4",
+    "hardhat": "^2.12.5",
     "hardhat-gas-reporter": "^1.0.8",
     "husky": "^7.0.4",
     "lint-staged": "^12.3.7",
@@ -89,7 +89,6 @@
     "prettier:check": "prettier --check --config ./.prettierrc.yaml \"**/*.{js,json,md,sol,ts,yaml,yml}\"",
     "test": "hardhat test",
     "typechain": "cross-env TS_NODE_TRANSPILE_ONLY=true hardhat typechain"
-    
   },
   "dependencies": {
     "@openzeppelin/test-helpers": "^0.5.16",

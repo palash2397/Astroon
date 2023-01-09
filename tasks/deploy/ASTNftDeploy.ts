@@ -14,6 +14,8 @@ async function main() {
   const contract = await ethers.getContractFactory("ASTNftSale");
 
   const Ast = await upgrades.deployProxy(contract, ["ASTRoon", "ASTNft", "https://ipfs.io/ipfs/QmSRRqEcDZK3azRebTngLuMoReoe7VMZWF1BeV9YNmXdTv/", add, ".json", 4, 110], { initializer: "initialize" });
+
+  
   await Ast.deployed();
   console.log("Contract deployed to :", Ast.address);
 
