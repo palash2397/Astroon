@@ -54,20 +54,18 @@ contract ASTNftSale is
         uint256 remainingSupply;
     }
 
+
+
     // Events
     event SaleStart(uint256 saleId);
     event BoughtNFT(address indexed to, uint256 amount, uint256 saleId);
 
     // Mapping
-  
     mapping(uint256 => CATEGORY) categoryOf; // ID to category
     mapping(CATEGORY => uint256[]) tokensByCategory; // array of token IDs
     mapping(uint256 => mapping(address => uint256)) public lastPurchasedAt;
     mapping(uint256 => SaleInfo) public SaleDetailMap;
   
-
-  
-
     function initialize(
         string memory _name,
         string memory _symbol,
@@ -96,6 +94,10 @@ contract ASTNftSale is
     function setMaxPreSaleLimit(uint256 _presaleLimit) external onlyOwner {
         maxPresaleLimit = _presaleLimit;
     }
+
+    // function resetCounter() external onlyOwner{
+    //     tokenIdCount.reset();
+    // }
 
     
     // Start Sale
@@ -211,7 +213,7 @@ contract ASTNftSale is
         CATEGORY[] memory _category,
         string[] memory _tokenURI
     ) external  onlyOwner {
-        for (uint256 i; i < _category.length; ) {
+        for (uint256 i; i < _category.length; ){
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
             _safeMint(_msgSender(), _id);
@@ -324,7 +326,7 @@ contract ASTNftSale is
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external onlyOwner {        
         _unpause();
     }
 
