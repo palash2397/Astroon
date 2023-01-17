@@ -119,6 +119,9 @@ contract ASTNftSale is
         emit SaleStart(saleId);
         return saleId;
     }
+    function setRevealed() external onlyOwner{
+        revealed = !revealed;
+    }
 
     function setMinimumToken(uint256 _minToken) external onlyOwner {
         minToken = _minToken;
