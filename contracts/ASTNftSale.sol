@@ -12,6 +12,7 @@ import "@openzeppelin/contracts-upgradeable/utils/CountersUpgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/common/ERC2981Upgradeable.sol";
 import "@openzeppelin/contracts-upgradeable/token/ERC20/extensions/IERC20MetadataUpgradeable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
+import "./interfaces/IASTRewards.sol";
 
 contract ASTNftSale is
     Initializable,
@@ -23,7 +24,6 @@ contract ASTNftSale is
     ERC721BurnableUpgradeable,
     ERC2981Upgradeable
 {
-   
     enum CATEGORY {
         BRONZE,
         SILVER,
@@ -53,9 +53,7 @@ contract ASTNftSale is
         uint256 endTime;
         uint256 remainingSupply;
     }
-
-
-
+  
     // Events
     event SaleStart(uint256 saleId);
     event BoughtNFT(address indexed to, uint256 amount, uint256 saleId);
@@ -63,9 +61,9 @@ contract ASTNftSale is
     // Mapping
     mapping(uint256 => CATEGORY) categoryOf; // ID to category
     mapping(CATEGORY => uint256[]) tokensByCategory; // array of token IDs
-    mapping(uint256 => mapping(address => uint256)) public lastPurchasedAt;
+    mapping(uint256 => mapping(address => uint256))  lastPurchasedAt;
     mapping(uint256 => SaleInfo) public SaleDetailMap;
-  
+
     function initialize(
         string memory _name,
         string memory _symbol,
@@ -89,17 +87,18 @@ contract ASTNftSale is
         minToken = _minToken;
         token = IERC20MetadataUpgradeable(_tokenAddr);
         saleId = 1;
+        rewardEnable = true;
     }
+
+    IASTRewards public astRewards;
+    bool public rewardEnable;
+
 
     function setMaxPreSaleLimit(uint256 _presaleLimit) external onlyOwner {
         maxPresaleLimit = _presaleLimit;
     }
 
-    // function resetCounter() external onlyOwner{
-    //     tokenIdCount.reset();
-    // }
 
-    
     // Start Sale
     function startPreSale(
         uint256 _cost,
@@ -119,7 +118,8 @@ contract ASTNftSale is
         emit SaleStart(saleId);
         return saleId;
     }
-    function setRevealed() external onlyOwner{
+
+    function setRevealed() external onlyOwner {
         revealed = !revealed;
     }
 
@@ -135,6 +135,9 @@ contract ASTNftSale is
         CATEGORY nftType
     ) external view returns (uint256[] memory) {
         return tokensByCategory[nftType];
+    }
+    function setRewardStatus() external onlyOwner{
+        rewardEnable = !rewardEnable;
     }
 
     function updateCategory(
@@ -160,12 +163,12 @@ contract ASTNftSale is
             nftBalance + nftQty <= maxPresaleLimit,
             "buying Limit exceeded"
         );
-        uint256 count = tokenBalance >= 100 * 10 ** 18 &&
-            tokenBalance <= 300 * 10 ** 18
+        uint256 count = tokenBalance >= 500 * 10 ** 18 &&
+            tokenBalance <= 1000 * 10 ** 18
             ? 1
-            : tokenBalance >= 301 * 10 ** 18 && tokenBalance <= 600 * 10 ** 18
+            : tokenBalance >= 1001 * 10 ** 18 && tokenBalance <= 1500 * 10 ** 18
             ? 2
-            : tokenBalance >= 601 * 10 ** 18 && tokenBalance <= 800 * 10 ** 18
+            : tokenBalance >= 1501 * 10 ** 18 && tokenBalance <= 2000 * 10 ** 18
             ? 3
             : 4;
 
@@ -180,6 +183,10 @@ contract ASTNftSale is
         address userAddress
     ) external view returns (uint256) {
         return lastPurchasedAt[tokenId][userAddress];
+    }
+
+    function setRewardContract(IASTRewards _astRewards) external onlyOwner {
+        astRewards = _astRewards;
     }
 
     function buyPresale(uint256 nftQty) external payable {
@@ -208,15 +215,15 @@ contract ASTNftSale is
             _safeMint(_msgSender(), _id);
             i++;
         }
-        payable(owner()).transfer(msg.value);  
+        payable(owner()).transfer(msg.value);
         emit BoughtNFT(_msgSender(), nftQty, saleId);
     }
 
     function minting(
         CATEGORY[] memory _category,
         string[] memory _tokenURI
-    ) external  onlyOwner {
-        for (uint256 i; i < _category.length; ){
+    ) external onlyOwner {
+        for (uint256 i; i < _category.length; ) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
             _safeMint(_msgSender(), _id);
@@ -249,6 +256,14 @@ contract ASTNftSale is
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
         whenNotPaused
     {
+        if (rewardEnable && from != address(0)) {
+            uint256 _rewards = astRewards.getRewardsCalc(
+                uint8(categoryOf[tokenId]),
+                tokenId,
+                from
+            );
+            astRewards.updateRewardAmount(_rewards);
+        }
         lastPurchasedAt[tokenId][to] = block.timestamp;
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
@@ -329,7 +344,7 @@ contract ASTNftSale is
         _pause();
     }
 
-    function unpause() external onlyOwner {        
+    function unpause() external onlyOwner {
         _unpause();
     }
 
