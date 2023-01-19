@@ -15,6 +15,7 @@ import "@openzeppelin/contracts-upgradeable/token/ERC20/IERC20Upgradeable.sol";
 import "@openzeppelin/contracts/utils/Strings.sol";
 import "./interfaces/IASTRewards.sol";
 
+
 contract ASTNftSale is
     Initializable,
     ERC721Upgradeable,
@@ -127,7 +128,7 @@ contract ASTNftSale is
     function setMintCost(uint256 _id, uint256 _newMintCost) external onlyOwner{
         SaleDetailMap[_id].mintCost =_newMintCost;
     }
-    function getRevealedTime() external view returns(uint256){
+    function getRevealedTime() external view returns(uint256){ 
         return revealedTime;
     }
 
@@ -248,7 +249,7 @@ contract ASTNftSale is
             _safeMint(_msgSender(), _id);
             i++;
         }
-
+        
     
         payable(owner()).transfer(msg.value);
         emit BoughtNFT(_msgSender(), nftQty, saleId);
@@ -344,6 +345,10 @@ contract ASTNftSale is
 
     function _baseURI() internal view virtual override returns (string memory) {
         return baseURI;
+    }
+
+    function setDefaultRoyalty(address receiver, uint96 feeNumerator) external  onlyOwner {
+       _setDefaultRoyalty( receiver,  feeNumerator);
     }
 
     function setBaseURI(string memory _newBaseURI) external onlyOwner {
