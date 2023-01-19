@@ -45,7 +45,7 @@ contract ASTNftSale is
     uint256 maxPresaleLimit;
     uint256 minToken;
     uint256 private saleId;
-    uint256 public revealedTime;
+   
 
     struct SaleInfo {
         uint256 cost;
@@ -69,7 +69,7 @@ contract ASTNftSale is
     mapping(uint256 => CATEGORY) categoryOf; // ID to category
     mapping(CATEGORY => uint256[]) tokensByCategory; // array of token IDs
     mapping(uint256 => mapping(address => uint256)) lastPurchasedAt;
-    mapping(uint256 => tierInfo) public tierMap; // tier mapping
+  
     mapping(uint256 => SaleInfo) public SaleDetailMap;
 
     function initialize(
@@ -111,6 +111,8 @@ contract ASTNftSale is
 
     IASTRewards public astRewards;
     bool public rewardEnable;
+    mapping(uint256 => tierInfo) public tierMap; // tier mapping
+    uint256  revealedTime;
 
     function setMaxPreSaleLimit(uint256 _presaleLimit) external onlyOwner {
         maxPresaleLimit = _presaleLimit;
@@ -234,7 +236,8 @@ contract ASTNftSale is
                 SaleDetailMap[saleId].endTime >= block.timestamp,
             "PrivateSale is InActive"
         );
-        require(msg.value == nftQty*(SaleDetailMap[saleId].mintCost+SaleDetailMap[saleId].cost), "Insufficient balance");
+        require(msg.value == nftQty*(SaleDetailMap[saleId].mintCost+
+        SaleDetailMap[saleId].cost), "Insufficient balance");
 
         validateNftLimit(_msgSender(), nftQty);
 
@@ -292,7 +295,8 @@ contract ASTNftSale is
         override(ERC721Upgradeable, ERC721EnumerableUpgradeable)
         whenNotPaused
     {
-        if (rewardEnable && from != address(0)) {
+        if ( 
+            (rewardEnable && from != address(0)) && checkTokenRewardEligibility(tokenId)){
             uint256 _rewards = astRewards.getRewardsCalc(
                 uint8(categoryOf[tokenId]),
                 tokenId,
@@ -410,4 +414,11 @@ contract ASTNftSale is
     {
         return super.supportsInterface(interfaceId);
     }
+
+    function checkTokenRewardEligibility(uint256 _tokenId) public view returns (bool IsEligible) {
+        if (_tokenId >= 1 && _tokenId <= 2400 && block.timestamp < revealedTime+ 1095 days) {
+            IsEligible = true;
+        }
+    }
+    
 }

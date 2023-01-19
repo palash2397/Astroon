@@ -13,187 +13,187 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "./interfaces/IASTNftSale.sol";
 import "./DateTime.sol";
 
-contract ASTRewards is OwnableUpgradeable, PausableUpgradeable {
-    ERC721EnumerableUpgradeable public NftContract;
+contract ASTTokenRewards is OwnableUpgradeable, ReentrancyGuardUpgradeable, DateTime {
+    IASTNftSale public nftContract;
     IERC20Upgradeable public token;
     IASTNftSale public _astNftsale;
+
     enum CATEGORY {
         BRONZE,
         SILVER,
         GOLD,
         PLATINUM
     }
+
     struct UserTokenDetails {
-        uint256 purchaseTime;
-        uint256 lastClaim;
-        uint256 rewardsClaimed;
+        uint256 lastRewardCliamed;
+        uint256 totalRewardsClaimed;
+        uint256 toClaim;
+        mapping(uint256 => uint256) lastClaim;
     }
 
-    mapping(uint256 => mapping(CATEGORY => uint256)) public RewardsMap;
-    mapping(address => mapping(uint256 => UserTokenDetails)) public userTokenDetailsMap;
-    mapping(uint256 => uint256) public WithdrawlMap; // month to figures
+    mapping(address => UserTokenDetails) internal userTokenDetailsMap;
 
-    event HoldngRewardsClaimed(uint256 tokenId, uint256 rewards, CATEGORY _category);
-    event SoldTokensRewardsClaimed(uint256 rewards);
-    event RewardsClaimedToday(uint256 rewards);
+    mapping(CATEGORY => mapping(uint256 => uint256)) public RewardsMap;
 
-    function initialize(address _nftaddress, address _AstTokenAddr) public initializer {
-        NftContract = ERC721EnumerableUpgradeable(_nftaddress);
+    mapping(uint256 => uint256) tokenLimitPerMonth;
+    mapping(uint256 => mapping(uint256 => uint256)) tokenCliamedPerMonth;
+
+    event HoldngRewardsClaimed(
+        uint256 tokenId,
+        uint256 rewards,
+        CATEGORY _category
+    );
+    event TotalRewardsClaimed(
+        uint256 totalRewards,
+        uint256 rewardAmount,
+        uint256 SoldTokensRewards
+    );
+
+    function initialize(
+        address _nftaddress,
+        address _AstTokenAddr
+    )
+        public
+        initializer
+    {
+        nftContract = IASTNftSale(_nftaddress);
         token = IERC20Upgradeable(_AstTokenAddr);
         _astNftsale = IASTNftSale(_nftaddress);
-        RewardsMap[1][CATEGORY.BRONZE] = 1 * 10**18;
-        RewardsMap[1][CATEGORY.SILVER] = 2 * 10**18;
-        RewardsMap[1][CATEGORY.GOLD] = 3 * 10**18;
-        RewardsMap[1][CATEGORY.PLATINUM] = 4 * 10**18;
 
-        RewardsMap[2][CATEGORY.BRONZE] = (1 / 2) * 10**18;
-        RewardsMap[2][CATEGORY.SILVER] = ((2 * 1) / 2) * 10**18;
-        RewardsMap[2][CATEGORY.GOLD] = ((3 * 1) / 2) * 10**18;
-        RewardsMap[2][CATEGORY.PLATINUM] = ((4 * 1) / 2) * 10**18;
+        RewardsMap[CATEGORY.BRONZE][1] = 1 * 10 ** 18;
+        RewardsMap[CATEGORY.SILVER][1] = 2 * 10 ** 18;
+        RewardsMap[CATEGORY.GOLD][1] = 3 * 10 ** 18;
+        RewardsMap[CATEGORY.PLATINUM][1] = 4 * 10 ** 18;
 
-        RewardsMap[3][CATEGORY.BRONZE] = ((1 * 1) / 4) * 10**18;
-        RewardsMap[3][CATEGORY.SILVER] = ((2 * 1) / 4) * 10**18;
-        RewardsMap[3][CATEGORY.GOLD] = ((3 * 1) / 4) * 10**18;
-        RewardsMap[3][CATEGORY.PLATINUM] = ((4 * 1) / 4) * 10**18;
+        RewardsMap[CATEGORY.BRONZE][2] = 0.5 * 10 ** 18;
+        RewardsMap[CATEGORY.SILVER][2] = 1 * 10 ** 18;
+        RewardsMap[CATEGORY.GOLD][2] = 1.5 * 10 ** 18;
+        RewardsMap[CATEGORY.PLATINUM][2] = 2 * 10 ** 18;
 
-        WithdrawlMap[1] = 0 * 10**18;
-        WithdrawlMap[2] = 100 * 10**18;
-        WithdrawlMap[3] = 200 * 10**18;
-        WithdrawlMap[4] = 300 * 10**18;
-        WithdrawlMap[5] = 300 * 10**18;
-        WithdrawlMap[6] = 750 * 10**18;
-        WithdrawlMap[7] = 750 * 10**18;
-        WithdrawlMap[8] = 750 * 10**18;
-        WithdrawlMap[9] = 750 * 10**18;
-        WithdrawlMap[10] = 1500 * 10**18;
-        WithdrawlMap[11] = 1500 * 10**18;
-        WithdrawlMap[12] = 2500 * 10**18;
+        RewardsMap[CATEGORY.BRONZE][3] = 0.25 * 10 ** 18;
+        RewardsMap[CATEGORY.SILVER][3] = 0.5 * 10 ** 18;
+        RewardsMap[CATEGORY.GOLD][3] = 0.75 * 10 ** 18;
+        RewardsMap[CATEGORY.PLATINUM][3] = 1 * 10 ** 18;
+
+        tokenLimitPerMonth[2] = 100 * 10 ** 18;
+        tokenLimitPerMonth[3] = 200 * 10 ** 18;
+        tokenLimitPerMonth[4] = 300 * 10 ** 18;
+        tokenLimitPerMonth[5] = 300 * 10 ** 18;
+        tokenLimitPerMonth[6] = 750 * 10 ** 18;
+        tokenLimitPerMonth[7] = 750 * 10 ** 18;
+        tokenLimitPerMonth[8] = 750 * 10 ** 18;
+        tokenLimitPerMonth[9] = 750 * 10 ** 18;
+        tokenLimitPerMonth[10] = 1500 * 10 ** 18;
+        tokenLimitPerMonth[11] = 1500 * 10 ** 18;
+        tokenLimitPerMonth[12] = 2500 * 10 ** 18;
+
         __Ownable_init();
-        __Pausable_init();
     }
 
-    function claim() external {
-        address _user = msg.sender;
+    function setTokenLimit(
+        uint256 month,
+        uint256 amount
+    )
+        external
+        onlyOwner
+    {
+        tokenLimitPerMonth[month] = amount;
+    }
+
+    function claim()
+        external
+        nonReentrant
+    {
+        address user = msg.sender;
         uint256 rewards;
-        uint256 TotalRewards;
-        uint256 nftBalance = IERC721EnumerableUpgradeable(NftContract).balanceOf(_user);
-
-        for (uint256 i = 0; i < nftBalance; i++) {
-            uint256 id = IERC721EnumerableUpgradeable(NftContract).tokenOfOwnerByIndex(_user, i);
-            uint8 x = uint8(_astNftsale.getCategory(id));
-
-            rewards = getRewardsCalc(x, id, _user);
-            TotalRewards += rewards;
-
-            UserTokenDetails memory _UserD = userTokenDetailsMap[_user][id];
-
-            _UserD.lastClaim = block.timestamp;
-            _UserD.rewardsClaimed += rewards;
-            userTokenDetailsMap[_user][id] = _UserD;
-
+        uint256 nftBalance = nftContract.balanceOf(user);
+        UserTokenDetails storage userDetails = userTokenDetailsMap[msg.sender];
+        for (uint256 i; i < nftBalance; i++) {
+            uint256 id = nftContract.tokenOfOwnerByIndex(user, i);
+            uint8 x = uint8(nftContract.getCategory(id));
+            uint256 amount = getRewardsCalc(x, id, user);
+            userDetails.lastClaim[id] = block.timestamp;
+            rewards += amount;
             emit HoldngRewardsClaimed(id, rewards, CATEGORY(x));
         }
-        uint256 _soldTokenRewards = _astNftsale.userDetailsMap(_user).SoldTokenRewards;
-        uint256 userLastDueRewards = _astNftsale.userDetailsMap(_user).dueRewards;
-        // get sold token rewards
-        uint256 CanClaimRewards = TotalRewards + _soldTokenRewards + userLastDueRewards; // user can claim
-        uint256 _allowedWithdrawl = allowedWithdraw(); // allowed this month
-        uint256 Actual_claimedRewards = CanClaimRewards > _allowedWithdrawl ? _allowedWithdrawl : CanClaimRewards;
-        uint256 dueRewards = CanClaimRewards > _allowedWithdrawl ? CanClaimRewards - _allowedWithdrawl : 0;
-        _astNftsale.updateUserDetails(_user, Actual_claimedRewards, dueRewards, 0);
-
-        // user's TotalRewardsClaimed updated , & user's dueRewards updated , soldtokensrewards
-        //updated zero, as they had transferred to user
-        token.transfer(_msgSender(), Actual_claimedRewards);
-        emit SoldTokensRewardsClaimed(_soldTokenRewards);
-        emit RewardsClaimedToday(Actual_claimedRewards);
-    }
-
-    function set_rewards(
-        uint256 _year,
-        uint256 _rewardQty,
-        CATEGORY _x
-    ) external onlyOwner {
-        RewardsMap[_year][_x] = _rewardQty;
+        uint256 claimedRewards = rewards + userDetails.toClaim;
+        (uint256 month, uint256 year) = getMonthAndYear();
+        require(tokenCliamedPerMonth[year][month] + claimedRewards <= tokenLimitPerMonth[month], "Month Limit Reached");
+        userDetails.lastRewardCliamed = claimedRewards;
+        userDetails.totalRewardsClaimed += claimedRewards;
+        tokenCliamedPerMonth[year][month] += claimedRewards;
+        token.transfer(_msgSender(), claimedRewards);
+        emit TotalRewardsClaimed(claimedRewards, rewards, userDetails.toClaim);
     }
 
     function getRewardsCalc(
-        uint8 _x,
+        uint8 _category,
         uint256 _id,
         address _addr
-    ) public view returns (uint256) {
-        UserTokenDetails memory _UserD = userTokenDetailsMap[_addr][_id];
-        CATEGORY z = CATEGORY(_x);
-        uint256 C = _UserD.lastClaim;
-
-        uint256 M1 = _UserD.purchaseTime + 365 days;
-        uint256 M2 = _UserD.purchaseTime + 731 days;
-        uint256 M3 = _UserD.purchaseTime + 1096 days;
-
-        uint256 RM1 = RewardsMap[1][z];
-        uint256 RM2 = RewardsMap[2][z];
-        uint256 RM3 = RewardsMap[3][z];
-
-        uint256 currLyingYear = (block.timestamp <= M1) ? 1 : (block.timestamp <= M2) ? 2 : (block.timestamp <= M3)
-            ? 3
-            : 4;
-        uint256 lastClaimYear = (C <= M1) ? 1 : (C <= M2) ? 2 : (C <= M3) ? 3 : 50;
-
-        uint256 total = currLyingYear == 1 ? (block.timestamp - C) * RM1 : currLyingYear == 2 && lastClaimYear == 2
-            ? (block.timestamp - C) * RM2
-            : currLyingYear == 2 && lastClaimYear == 1
-            ? (block.timestamp - M1) * RM2 + (M1 - C) * RM1
-            : currLyingYear == 3 && lastClaimYear == 3
-            ? (block.timestamp - C) * RM3
-            : currLyingYear == 3 && lastClaimYear == 2
-            ? (block.timestamp - M2) * RM3 + (M2 - C) * RM2
-            : currLyingYear == 3 && lastClaimYear == 1
-            ? (block.timestamp - M2) * RM3 + (M2 - M1) * RM2 + (M1 - C) * RM1
-            : (M3 - M2) * RM3 + (M2 - M1) * RM2 + (M1 - C) * RM1;
-
-        uint256 calc = total / 86400;
-        return calc;
+    )
+        public
+        view
+        returns
+        (uint256 rewardAmount)
+    {
+        UserTokenDetails storage user = userTokenDetailsMap[_addr];
+        CATEGORY category = CATEGORY(_category);
+        uint256 purchaseTime = nftContract.getLastPurchaseTime(_id, _addr);
+        uint256 timeDuration = block.timestamp - purchaseTime;
+        uint256 dayCount = timeDuration / 1 days;
+        if(dayCount != 0) {
+            rewardAmount = dayCount <= 365
+                ? dayCount * RewardsMap[category][1]
+                : (dayCount > 365 && timeDuration <= 730)
+                ? (365 * RewardsMap[category][1]) + ((dayCount - 365) * RewardsMap[category][2])
+                : dayCount > 730 && dayCount <= 1095
+                ? (365 * RewardsMap[category][1]) + (365 * RewardsMap[category][2]) + ((dayCount - 730) * RewardsMap[category][3])
+                : (365 * RewardsMap[category][1]) + (365 * RewardsMap[category][2]) + (365 * RewardsMap[category][3]);
+        }
+        if(user.lastClaim[_id] > purchaseTime) {
+            uint256 cliamDays = (user.lastClaim[_id] - purchaseTime) / 1 days;
+            uint256 claimedAmount = cliamDays <= 365
+                ? cliamDays * RewardsMap[category][1]
+                : cliamDays > 365 && cliamDays <= 730
+                ? (365 * RewardsMap[category][1]) + (cliamDays * RewardsMap[category][2])
+                : cliamDays > 730 && cliamDays <= 1095
+                ? (365 * RewardsMap[category][1]) + (365 * RewardsMap[category][2]) + (cliamDays * RewardsMap[category][3])
+                : (365 * RewardsMap[category][1]) + (365 * RewardsMap[category][2]) + (365 * RewardsMap[category][3]);
+            rewardAmount -= claimedAmount;
+        }
     }
 
-    // to calculate rewards to claim till date
-    function rewards_To_claim(address _addr, uint256 tokenId) external view returns (uint256 rewards) {
-        uint256 id = IERC721EnumerableUpgradeable(NftContract).tokenOfOwnerByIndex(_addr, tokenId);
-        uint8 x = uint8(_astNftsale.getCategoryOf(id));
-        rewards = getRewardsCalc(x, id, _addr);
-
-        return rewards;
-    }
-
-    function allowedWithdraw() internal view returns (uint256) {
-        uint256 currMonth = DateTime.getMonth(block.timestamp);
-        return WithdrawlMap[currMonth];
-    }
-
-    function setWithdrawalLimits(uint256 _month, uint256 _limit) external onlyOwner {
-        WithdrawlMap[_month] = _limit;
+    function updateRewardAmount(
+        address _addr,
+        uint256 rewardAmount
+    )
+        external
+        returns(bool)
+    {
+        require(address(nftContract) == msg.sender, "Invalid Caller");
+        UserTokenDetails storage userDetails = userTokenDetailsMap[_addr];
+        userDetails.toClaim = rewardAmount;
+        return true;
     }
 
     function setRewardsMap(
         uint256 _rewards,
         uint256 _year,
-        CATEGORY _x
-    ) external onlyOwner {
-        RewardsMap[_year][_x] = _rewards * 10**18;
+        CATEGORY _category
+    )
+        external
+        onlyOwner
+    {
+        RewardsMap[_category][_year] = _rewards;
     }
 
-    function tokensAvailable() public view returns (uint256) {
-        return token.balanceOf(address(this));
-    }
-
-    fallback() external payable {}
-
-    receive() external payable {}
-
-    function pause() public onlyOwner {
-        _pause();
-    }
-
-    function unpause() public onlyOwner {
-        _unpause();
+    function getMonthAndYear()
+        public
+        view
+        returns(uint256 month, uint256 year)
+    {
+        month = getMonth(block.timestamp);
+        year = getYear(block.timestamp);
     }
 }

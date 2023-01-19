@@ -13,4 +13,6 @@ interface IASTNftSale is IERC721EnumerableUpgradeable {
         uint256 tokenId,
         address user
     ) external view returns(uint256);
+
+     function checkTokenRewardEligibility(uint256 _tokenId) external view returns (bool IsEligible);
 }
