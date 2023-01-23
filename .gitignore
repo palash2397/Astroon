@@ -29,7 +29,7 @@ yarn-debug.log*
 yarn-error.log*
 yarn.lock
 package-lock.json
+ASTNftSale1.sol
 
 
 src/types/*
-contracts/*ASTNftSale1.sol
