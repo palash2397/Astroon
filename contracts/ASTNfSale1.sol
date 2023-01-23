@@ -16,7 +16,7 @@ import "@openzeppelin/contracts/utils/Strings.sol";
 import "./interfaces/IASTRewards.sol";
 
 
-contract ASTNftSale is
+contract ASTNftSale1 is
     Initializable,
     ERC721Upgradeable,
     ERC721URIStorageUpgradeable,
@@ -226,7 +226,8 @@ contract ASTNftSale is
                 SaleDetailMap[saleId].endTime >= block.timestamp,
             "PrivateSale is InActive"
         );
-        require(msg.value == nftQty*(SaleDetailMap[saleId].mintCost), "Insufficient balance");
+        require(msg.value == nftQty*(SaleDetailMap[saleId].mintCost+
+        SaleDetailMap[saleId].cost), "Insufficient balance");
 
         validateNftLimit(_msgSender(), nftQty);
 
@@ -237,12 +238,12 @@ contract ASTNftSale is
         SaleDetailMap[saleId].remainingSupply -= nftQty; 
         for (uint256 i; i < nftQty; ) {
             tokenIdCount.increment();
-            uint256 _id = tokenIdCount.current();  
+            uint256 _id = tokenIdCount.current();
             _safeMint(_msgSender(), _id);
             i++;
         }
         
-        token.transferFrom(msg.sender, address(this), nftQty*(SaleDetailMap[saleId].cost));
+    
         payable(owner()).transfer(msg.value);
         emit BoughtNFT(_msgSender(), nftQty, saleId);
     }

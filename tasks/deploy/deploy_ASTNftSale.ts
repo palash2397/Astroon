@@ -3,7 +3,7 @@ const { ethers, upgrades } = require("hardhat");
 
 
 
-const proxy1 = "0xA7a399862EBc5aa01b433da072c23D668aBEa92A";
+const proxy1 = "0xE76dAE9B8a926F1F46eC02192a83F2F51f590B61";
 async function main() {
   const [deployer] = await ethers.getSigners();
 
