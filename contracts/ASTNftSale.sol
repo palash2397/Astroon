@@ -101,17 +101,17 @@ contract ASTNftSale is
         saleId = 1;
         rewardEnable = true;
         _setDefaultRoyalty(_receiverAddress, _royaltyAmt);
-        tierMap[2].minValue=1500*10**18;
-        tierMap[2].maxValue=(3000*10**18);
+        tierMap[1].minValue=1500*10**18;
+        tierMap[1].maxValue=(3000*10**18);
 
-        tierMap[4].minValue=3000*10**18;
-        tierMap[4].maxValue=(4500*10**18);   
+        tierMap[2].minValue=3000*10**18;
+        tierMap[2].maxValue=(4500*10**18);   
 
-        tierMap[6].minValue=4500*10**18;
-        tierMap[6].maxValue=(6000*10**18);
+        tierMap[3].minValue=4500*10**18;
+        tierMap[3].maxValue=(6000*10**18);
 
-        tierMap[8].minValue=6000*10**18;
-        tierMap[8].maxValue=(7500*10**18);
+        tierMap[4].minValue=6000*10**18;
+        tierMap[4].maxValue=(7500*10**18);
      }
 
         
