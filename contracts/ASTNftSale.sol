@@ -388,7 +388,7 @@ contract ASTNftSale is
     }
 
     function _burn(
-        uint256 tokenId
+        uint256 tokenId  
     ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
         super._burn(tokenId);
     }
