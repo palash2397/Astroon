@@ -336,6 +336,7 @@ contract ASTNftSale1 is
     }
 
     function reveal() external onlyOwner {
+        require(block.timestamp > SaleDetailMap[saleId].endTime);
         revealed = true;
         revealedTime=block.timestamp;
 

@@ -43,7 +43,7 @@ const chainIds = {
  
 };
 
-function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
+function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig { 
   let jsonRpcUrl: string = "";
   let privateKey = process.env.GOERLI_PRIVATE_KEY || "";
 
@@ -80,7 +80,7 @@ function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
 const network = process.env.TESTING === "true" ? "hardhat" : process.env.DEPLOY_NETWORK || "rinkeby";
 
 const config: HardhatUserConfig = {
-  defaultNetwork: network,
+  defaultNetwork: "hardhat",
  
   etherscan: {
     apiKey: {

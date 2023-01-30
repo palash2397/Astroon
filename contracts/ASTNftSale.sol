@@ -41,11 +41,13 @@ contract ASTNftSale is
     string public baseURI;
     string public notRevealedUri;
     string public baseExtension;
-    bool public revealed;
     uint256 maxPresaleLimit;
+    bool public revealed;
     uint256 minToken;
     uint256 private saleId;
-  
+    uint256 private revealedTime;
+    bool public rewardEnable;
+ 
     struct SaleInfo {
         uint256 cost;
         uint256 mintCost;
@@ -55,6 +57,7 @@ contract ASTNftSale is
         uint256 remainingSupply;
     }
 
+    
     struct tierInfo {
         uint256 minValue;
         uint256 maxValue;
@@ -67,7 +70,9 @@ contract ASTNftSale is
     // Mapping 
     mapping(uint256 => CATEGORY) categoryOf; // ID to category
     mapping(CATEGORY => uint256[]) tokensByCategory; // array of token IDs
-    mapping(uint256 => SaleInfo) public SaleDetailMap;
+    mapping(uint256 => SaleInfo) public SaleDetailMap; // sale mapping 
+    mapping(uint256 => tierInfo) public tierMap; // tier mapping
+    mapping(address => uint256) userSpendInfo;
 
     function initialize(
         string memory _name,
@@ -96,29 +101,29 @@ contract ASTNftSale is
         saleId = 1;
         rewardEnable = true;
         _setDefaultRoyalty(_receiverAddress, _royaltyAmt);
-        tierMap[1].minValue=100*10**18;
-        tierMap[1].maxValue=300*10**18;
+        tierMap[2].minValue=1500*10**18;
+        tierMap[2].maxValue=(3000*10**18);
 
-        tierMap[2].minValue=(300*10**18)+1;
-        tierMap[2].maxValue=600*10**18;   
+        tierMap[4].minValue=3000*10**18;
+        tierMap[4].maxValue=(4500*10**18);   
 
-        tierMap[3].minValue=(600*10**18)+1;
-        tierMap[3].maxValue=800*10**18;
+        tierMap[6].minValue=4500*10**18;
+        tierMap[6].maxValue=(6000*10**18);
+
+        tierMap[8].minValue=6000*10**18;
+        tierMap[8].maxValue=(7500*10**18);
      }
 
         
 
-
+  
     IASTRewards public astRewards;
-    bool public rewardEnable;
-    mapping(uint256 => tierInfo) public tierMap; // tier mapping
-    uint256 private revealedTime;
+  
 
-    function setMaxPreSaleLimit(uint256 _presaleLimit) external onlyOwner {
+    function setMaxPreSaleLimit(uint256 _presaleLimit) external   {
         maxPresaleLimit = _presaleLimit;
     }
-
-     function setTireMap(
+    function setTireMap(
         uint256 _tierLevel,
         uint256 _min,
         uint256 _max
@@ -127,7 +132,7 @@ contract ASTNftSale is
         tierMap[_tierLevel].maxValue = _max;
     }
 
-    function setMintCost(uint256 _id, uint256 _newMintCost) external onlyOwner{
+    function setMintCost(uint256 _id, uint256 _newMintCost) external  {
         SaleDetailMap[_id].mintCost =_newMintCost;
     }
     function getRevealedTime() external view returns(uint256){ 
@@ -141,7 +146,7 @@ contract ASTNftSale is
         uint256 _maxSupply,
         uint256 _startTime,
         uint256 _endTime
-    ) external onlyOwner returns (uint256) {
+    ) external   returns (uint256) {
         SaleDetailMap[saleId] = SaleInfo(
             _cost,
             _mintCost,
@@ -154,11 +159,11 @@ contract ASTNftSale is
         return saleId;
     }
 
-    function setRevealed() external onlyOwner {
+    function setRevealed() external   {
         revealed = !revealed;
     }
 
-    function setMinimumToken(uint256 _minToken) external onlyOwner {
+    function setMinimumToken(uint256 _minToken) external   {
         minToken = _minToken;
     }
 
@@ -172,14 +177,14 @@ contract ASTNftSale is
         return tokensByCategory[nftType];
     }
 
-    function setRewardStatus() external onlyOwner { 
+    function setRewardStatus() external   { 
         rewardEnable = !rewardEnable;
     }
 
     function updateCategory(
         CATEGORY[] memory _category,
         uint256[] memory _id
-    ) external onlyOwner {
+    ) external   {
         require(_category.length == _id.length, "Invalid length");
         for (uint256 i; i < _category.length; i++) {
             categoryOf[_id[i]] = _category[i];
@@ -187,28 +192,33 @@ contract ASTNftSale is
         }
     }
 
-    function UpdateTokenAddress(address _tokenAddr) external onlyOwner {
+    function UpdateTokenAddress(address _tokenAddr) external   {
         token = IERC20MetadataUpgradeable(_tokenAddr);
     }
 
     function validateNftLimit(address _addr, uint256 nftQty) internal view {
         uint256 tokenBalance = token.balanceOf(_addr);
         uint256 nftBalance = balanceOf(_addr);
-        require(tokenBalance >= minToken, "Insufficient balance");
+        uint256 spendAmount = userSpendInfo[_addr]+tokenBalance;
+        require(spendAmount >= minToken, "Insufficient balance");
         require(
             nftBalance + nftQty <= maxPresaleLimit,
             "buying Limit exceeded"
         );
-          uint256 count = tokenBalance >= tierMap[1].minValue &&
-            tokenBalance <= tierMap[1].maxValue
-            ? 1
-            : tokenBalance >= tierMap[2].minValue &&
-                tokenBalance <= tierMap[2].maxValue
+
+          uint256 count = spendAmount  >= tierMap[2].minValue &&
+            spendAmount < tierMap[2].maxValue
             ? 2
-            : tokenBalance >= tierMap[3].minValue &&
-                tokenBalance <= tierMap[3].maxValue
-            ? 3
-            : 4;
+            : spendAmount >= tierMap[4].minValue &&
+                spendAmount< tierMap[4].maxValue
+            ? 4
+            : spendAmount >= tierMap[6].minValue &&
+                spendAmount < tierMap[6].maxValue
+            ? 6
+            :spendAmount >= tierMap[8].minValue &&
+                spendAmount < tierMap[8].maxValue
+            ? 8 
+            :10 ;
 
         require(
             count >= nftBalance && (count - nftBalance) >= nftQty,
@@ -216,7 +226,7 @@ contract ASTNftSale is
         );
     }
 
-    function setRewardContract(IASTRewards _astRewards) external onlyOwner {
+    function setRewardContract(IASTRewards _astRewards) external   {
         astRewards = _astRewards;
     }
 
@@ -227,9 +237,8 @@ contract ASTNftSale is
             "PrivateSale is InActive"
         );
         require(msg.value == nftQty*(SaleDetailMap[saleId].mintCost), "Insufficient balance");
-
         validateNftLimit(_msgSender(), nftQty);
-
+        
         require(
             tokenIdCount.current() + nftQty <= SaleDetailMap[saleId].maxSupply,
             "Not enough tokens"
@@ -242,15 +251,19 @@ contract ASTNftSale is
             i++;
         }
         
+        userSpendInfo[_msgSender()] += nftQty*(SaleDetailMap[saleId].cost);
         token.transferFrom(msg.sender, address(this), nftQty*(SaleDetailMap[saleId].cost));
         payable(owner()).transfer(msg.value);
         emit BoughtNFT(_msgSender(), nftQty, saleId);
+
+        
+        
     }
 
     function minting(
         CATEGORY[] memory _category,
         string[] memory _tokenURI
-    ) external onlyOwner {
+    ) external   {
         for (uint256 i; i < _category.length; ) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
@@ -334,7 +347,7 @@ contract ASTNftSale is
                 : "";
     }
 
-    function reveal() external onlyOwner {
+    function reveal() external   {
         revealed = true;
         revealedTime=block.timestamp;
 
@@ -344,27 +357,27 @@ contract ASTNftSale is
         return baseURI;
     }
 
-    function setDefaultRoyalty(address receiver, uint96 feeNumerator) external  onlyOwner {
+    function setDefaultRoyalty(address receiver, uint96 feeNumerator) external    {
        _setDefaultRoyalty( receiver,  feeNumerator);
     }
 
-    function setBaseURI(string memory _newBaseURI) external onlyOwner {
+    function setBaseURI(string memory _newBaseURI) external   {
         baseURI = _newBaseURI;
     }
 
     function setNotRevealedURI(
         string memory _notRevealedURI
-    ) external onlyOwner {
+    ) external   {
         notRevealedUri = _notRevealedURI;
     }
 
     function setBaseExtension(
         string memory _newBaseExtension
-    ) external onlyOwner {
+    ) external   {
         baseExtension = _newBaseExtension;
     }
 
-    function setCost(uint256 _saleId, uint256 _newCost) external onlyOwner {
+    function setCost(uint256 _saleId, uint256 _newCost) external   {
         SaleDetailMap[_saleId].cost = _newCost;
     }
 
@@ -375,20 +388,20 @@ contract ASTNftSale is
             block.timestamp <= detail.endTime); // Must be before the end date
     }
 
-    function pause() external onlyOwner {
+    function pause() external   {
         _pause();
     }
 
-    function unpause() external onlyOwner {
+    function unpause() external   {
         _unpause();
     }
 
-    function withdrawAmount() external onlyOwner {
+    function withdrawAmount() external   {
         payable(owner()).transfer(address(this).balance);
     }
 
     function _burn(
-        uint256 tokenId  
+        uint256 tokenId
     ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
         super._burn(tokenId);
     }
