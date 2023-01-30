@@ -35,7 +35,6 @@ contract ASTNftSale is
     using Strings for uint256;
     using CountersUpgradeable for CountersUpgradeable.Counter;
     CountersUpgradeable.Counter private tokenIdCount;
-
     IERC20MetadataUpgradeable public token;
 
     string public baseURI;
@@ -57,7 +56,6 @@ contract ASTNftSale is
         uint256 remainingSupply;
     }
 
-    
     struct tierInfo {
         uint256 minValue;
         uint256 maxValue;
@@ -113,12 +111,7 @@ contract ASTNftSale is
         tierMap[4].minValue=6000*10**18;
         tierMap[4].maxValue=(7500*10**18);
      }
-
-        
-
-  
     IASTRewards public astRewards;
-  
 
     function setMaxPreSaleLimit(uint256 _presaleLimit) external   {
         maxPresaleLimit = _presaleLimit;
@@ -158,7 +151,6 @@ contract ASTNftSale is
         emit SaleStart(saleId);
         return saleId;
     }
-
     function setRevealed() external   {
         revealed = !revealed;
     }
@@ -170,7 +162,6 @@ contract ASTNftSale is
     function getCategory(uint256 tokenId) external view returns (CATEGORY) {
         return categoryOf[tokenId];
     }
-
     function getAllTokenByCategory(
         CATEGORY nftType
     ) external view returns (uint256[] memory) {
@@ -219,7 +210,6 @@ contract ASTNftSale is
                 spendAmount < tierMap[4].maxValue
             ? 8 
             :10 ;
-
         require(
             count >= nftBalance && (count - nftBalance) >= nftQty,
             "buying Limit exceeded"
@@ -247,18 +237,14 @@ contract ASTNftSale is
         for (uint256 i; i < nftQty; ) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current(); 
-            astRewards.updateIsHoldgMystryBoxNft(_msgSender(), true); 
+         
             _safeMint(_msgSender(), _id);
             i++;
         }
-        
         userSpendInfo[_msgSender()] += nftQty*(SaleDetailMap[saleId].cost);
         token.transferFrom(msg.sender, address(this), nftQty*(SaleDetailMap[saleId].cost));
         payable(owner()).transfer(msg.value);
         emit BoughtNFT(_msgSender(), nftQty, saleId);
-
-        
-        
     }
 
     function minting(
@@ -271,8 +257,7 @@ contract ASTNftSale is
             _safeMint(_msgSender(), _id);
             categoryOf[_id] = _category[i];
             tokensByCategory[_category[i]].push(_id);
-            i++;
-            
+            i++;  
         }
     }
 
@@ -309,18 +294,11 @@ contract ASTNftSale is
             uint256 _rewards = astRewards.getRewardsCalc(
                 tokenId
             );
-            astRewards.updateRewardAmount(from,_rewards);
-            astRewards.updateLastClaimOfToken(tokenId);
-            astRewards.updateIsHoldgMystryBoxNft(to, true);
-            astRewards.updateIsHoldgMystryBoxNft(from, false);
+              astRewards.updateData(tokenId, _rewards, from);
         }
        
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
-
-
-
-
 
     function tokenURI(
         uint256 tokenId 
@@ -387,7 +365,6 @@ contract ASTNftSale is
         SaleDetailMap[_saleId].cost = _newCost;
     }
 
-    
     function isActive() external view returns (bool) {
         SaleInfo memory detail = SaleDetailMap[saleId];
         return (block.timestamp >= detail.startTime && // Must be after the start date

@@ -13,6 +13,7 @@ import "@openzeppelin/contracts-upgradeable/security/PausableUpgradeable.sol";
 import "./interfaces/IASTNftSale.sol";
 import "./DateTime.sol";
 
+
 contract ASTTokenRewards is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgradeable, DateTime {
     IASTNftSale public nftContract;
     IERC20Upgradeable public token;
@@ -30,7 +31,6 @@ contract ASTTokenRewards is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
         uint256 totalRewardsClaimed; // total rewards claimed by user
         uint256 rewardsOfSoldToken; //remaining accumulated rewards
         uint256 ClaimedRewardsDue; //claimed rewards due, due monthly claim limits
-        bool IsHoldgMystryBoxNft;
     }
 
     mapping(address => UserTokenDetails) public userTokenDetailsMap;
@@ -38,7 +38,7 @@ contract ASTTokenRewards is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
     mapping(uint256 => uint256) lastClaimOftoken; //tokenid to timestamp
     mapping(uint256 => uint256) WithdrawlMap; //month to withdrawl limit
     mapping(address => mapping(uint256 => uint256)) singleMonthClaims;
-    // user => current month => claim amount
+    // @dev ,  user => current month => claim amount
 
     event HoldingRewardsClaimed(uint256 tokenId, uint256 rewards, CATEGORY _category);
     event RewardsClaimedToday(
@@ -89,54 +89,50 @@ contract ASTTokenRewards is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
         uint256 _rewardsOfSoldToken = userDetails.rewardsOfSoldToken; //if any sold token rewards
 
         uint256 rewards;
-        bool _check = userDetails.IsHoldgMystryBoxNft;
-        if (_check) {
-            uint256 currMonth = DateTime.getMonth(block.timestamp);
-            uint256 nftBalance = nftContract.balanceOf(_msgSender());
-            for (uint256 i; i < nftBalance; i++) {
-                uint256 id = nftContract.tokenOfOwnerByIndex(_msgSender(), i);
-                bool IsEligible = nftContract.checkTokenRewardEligibility(id);
-                if (IsEligible) {
-                    uint256 amount = getRewardsCalc(id);
-                    uint8 x = uint8(nftContract.getCategory(id));
-                    lastClaimOftoken[id] = block.timestamp;
-                    uint256 _rewards = amount;
-                    rewards += amount;
 
-                    emit HoldingRewardsClaimed(id, _rewards, CATEGORY(x));
-                }
+        uint256 currMonth = DateTime.getMonth(block.timestamp);
+        uint256 nftBalance = nftContract.balanceOf(_msgSender());
+        for (uint256 i; i < nftBalance; i++) {
+            uint256 id = nftContract.tokenOfOwnerByIndex(_msgSender(), i);
+            bool IsEligible = nftContract.checkTokenRewardEligibility(id);
+            if (IsEligible) {
+                uint256 amount = getRewardsCalc(id);
+                uint8 x = uint8(nftContract.getCategory(id));
+                lastClaimOftoken[id] = block.timestamp;
+                uint256 _rewards = amount;
+                rewards += amount;
+
+                emit HoldingRewardsClaimed(id, _rewards, CATEGORY(x));
             }
-
-            uint256 _ClaimedRewardsDue = userDetails.ClaimedRewardsDue; //due to monthly limit user has not get this much rewards
-            uint256 CanClaimRewards = rewards + userDetails.rewardsOfSoldToken + userDetails.ClaimedRewardsDue;
-
-            uint256 prev = singleMonthClaims[_msgSender()][currMonth];
-
-            if (prev + CanClaimRewards <= allowedWithdraw()) {
-                singleMonthClaims[_msgSender()][currMonth] = prev + CanClaimRewards;
-                userDetails.lastRewardClaimed = CanClaimRewards;
-                userDetails.totalRewardsClaimed += CanClaimRewards;
-                require(CanClaimRewards != 0, "No Rewards");
-
-                token.transfer(_msgSender(), CanClaimRewards); //transferred claimedRewards
-                emit RewardsClaimedToday(_msgSender(), CanClaimRewards, _rewardsOfSoldToken, _ClaimedRewardsDue);
-            } else {
-                uint256 canClaim = allowedWithdraw() - prev;
-                singleMonthClaims[_msgSender()][currMonth] = prev + canClaim;
-                userDetails.lastRewardClaimed = canClaim;
-                userDetails.totalRewardsClaimed += canClaim;
-
-                uint256 ClaimedRewardsDue = CanClaimRewards - canClaim;
-                userDetails.ClaimedRewardsDue = ClaimedRewardsDue; //rewards due due to monthly limit
-                require(canClaim != 0, "No Rewards");
-
-                token.transfer(_msgSender(), canClaim); //transferred claimedRewards
-                emit RewardsClaimedToday(_msgSender(), canClaim, _rewardsOfSoldToken, _ClaimedRewardsDue);
-            }
-        } else {
-            require(_rewardsOfSoldToken != 0, "No rewards to claim");
-            token.transfer(_msgSender(), _rewardsOfSoldToken); //transferred claimedRewards
         }
+
+        uint256 _ClaimedRewardsDue = userDetails.ClaimedRewardsDue; //due to monthly limit user has not get this much rewards
+        uint256 CanClaimRewards = rewards + userDetails.rewardsOfSoldToken + userDetails.ClaimedRewardsDue;
+
+        uint256 prev = singleMonthClaims[_msgSender()][currMonth];
+
+        if (prev + CanClaimRewards <= allowedWithdraw()) {
+            singleMonthClaims[_msgSender()][currMonth] = prev + CanClaimRewards;
+            userDetails.lastRewardClaimed = CanClaimRewards;
+            userDetails.totalRewardsClaimed += CanClaimRewards;
+            require(CanClaimRewards != 0, "No Rewards");
+
+            token.transfer(_msgSender(), CanClaimRewards); //transferred claimedRewards
+            emit RewardsClaimedToday(_msgSender(), CanClaimRewards, _rewardsOfSoldToken, _ClaimedRewardsDue);
+        } else {
+            uint256 canClaim = allowedWithdraw() - prev;
+            singleMonthClaims[_msgSender()][currMonth] = prev + canClaim;
+            userDetails.lastRewardClaimed = canClaim;
+            userDetails.totalRewardsClaimed += canClaim;
+
+            uint256 ClaimedRewardsDue = CanClaimRewards - canClaim;
+            userDetails.ClaimedRewardsDue = ClaimedRewardsDue; //rewards due due to monthly limit
+            require(canClaim != 0, "No Rewards");
+
+            token.transfer(_msgSender(), canClaim); //transferred claimedRewards
+            emit RewardsClaimedToday(_msgSender(), canClaim, _rewardsOfSoldToken, _ClaimedRewardsDue);
+        }
+
         userDetails.rewardsOfSoldToken = 0; //updating sold token rewards
     }
 
@@ -170,22 +166,16 @@ contract ASTTokenRewards is OwnableUpgradeable, PausableUpgradeable, ReentrancyG
         }
     }
 
-    function updateRewardAmount(address _addr, uint256 rewardAmount) external returns (bool) {
+    function updateData(
+        uint256 _tokenId,
+        uint256 _rewards,
+        address _from
+    ) external {
         require(address(nftContract) == msg.sender, "Invalid Caller");
-        UserTokenDetails storage userDetails = userTokenDetailsMap[_addr];
-        userDetails.rewardsOfSoldToken += rewardAmount;
-        return true;
-    }
+        UserTokenDetails storage userDetails = userTokenDetailsMap[_from];
+        userDetails.rewardsOfSoldToken += _rewards; // store unclaimed rewards
 
-    function updateIsHoldgMystryBoxNft(address _addr, bool _isOrNot) external {
-        require(address(nftContract) == msg.sender, "Invalid Caller");
-        UserTokenDetails storage userDetails = userTokenDetailsMap[_addr];
-        userDetails.IsHoldgMystryBoxNft = _isOrNot;
-    }
-
-    function updateLastClaimOfToken(uint256 _tokenId) external {
-        require(address(nftContract) == msg.sender, "Invalid Caller");
-        lastClaimOftoken[_tokenId] = block.timestamp;
+        lastClaimOftoken[_tokenId] = block.timestamp; //update last claim of sold token id
     }
 
     function setWithdrawalLimits(uint256 _month, uint256 _limit) external onlyOwner {

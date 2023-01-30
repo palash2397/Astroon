@@ -55,10 +55,10 @@ describe("Unit Tests", function () {
         const tx = await astNft.startPreSale((400*10**18).toString(), (0.1*10**18).toString(), 2400, timestamp, timestamp+(30*24*60*60));
         var x = parseInt((await tx.wait()).logs[0].data);
 
-        await astNft.setTireMap(2, "1500000000000000000000",  "3000000000000000000000");
-        await astNft.connect(admin).setTireMap(4, "3000000000000000000000","4500000000000000000000");
-        await astNft.connect(admin).setTireMap(6, "4500000000000000000000","6000000000000000000000");
-        await astNft.connect(admin).setTireMap(8, "6000000000000000000000","7500000000000000000000");
+        await astNft.setTireMap(1, "1500000000000000000000",  "3000000000000000000000");
+        await astNft.connect(admin).setTireMap(2, "3000000000000000000000","4500000000000000000000");
+        await astNft.connect(admin).setTireMap(3, "4500000000000000000000","6000000000000000000000");
+        await astNft.connect(admin).setTireMap(4, "6000000000000000000000","7500000000000000000000");
     });
 
     describe("ASTNFT", () => {
@@ -123,8 +123,7 @@ describe("Unit Tests", function () {
             // await ethers.provider.send("evm_mine")
             // tx = await astReward.getRewardsCalc(0, 1, user.address)
             // console.log("reward", parseInt(tx))
-           
-          
+            
         })
         
         it("PreSale buy two-two", async function () {
@@ -427,7 +426,7 @@ describe("Unit Tests", function () {
             var tx = await astNft.connect(admin).minting([1, 3, 2, 0]);
             var txn = await tx.wait();
 
-
         });
+
     });
 });
