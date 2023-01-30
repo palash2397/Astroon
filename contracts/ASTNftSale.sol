@@ -150,7 +150,7 @@ contract ASTNftSale is
         SaleDetailMap[saleId] = SaleInfo(
             _cost,
             _mintCost,
-            _maxSupply,
+            _maxSupply, 
             _startTime,
             _endTime,
             _maxSupply
@@ -206,17 +206,17 @@ contract ASTNftSale is
             "buying Limit exceeded"
         );
 
-          uint256 count = spendAmount  >= tierMap[2].minValue &&
-            spendAmount < tierMap[2].maxValue
+          uint256 count = spendAmount  >= tierMap[1].minValue &&
+            spendAmount < tierMap[1].maxValue
             ? 2
-            : spendAmount >= tierMap[4].minValue &&
-                spendAmount< tierMap[4].maxValue
+            : spendAmount >= tierMap[2].minValue &&
+                spendAmount< tierMap[2].maxValue
             ? 4
-            : spendAmount >= tierMap[6].minValue &&
-                spendAmount < tierMap[6].maxValue
+            : spendAmount >= tierMap[3].minValue &&
+                spendAmount < tierMap[3].maxValue
             ? 6
-            :spendAmount >= tierMap[8].minValue &&
-                spendAmount < tierMap[8].maxValue
+            :spendAmount >= tierMap[4].minValue &&
+                spendAmount < tierMap[4].maxValue
             ? 8 
             :10 ;
 
@@ -246,7 +246,8 @@ contract ASTNftSale is
         SaleDetailMap[saleId].remainingSupply -= nftQty; 
         for (uint256 i; i < nftQty; ) {
             tokenIdCount.increment();
-            uint256 _id = tokenIdCount.current();  
+            uint256 _id = tokenIdCount.current(); 
+            astRewards.updateIsHoldgMystryBoxNft(_msgSender(), true); 
             _safeMint(_msgSender(), _id);
             i++;
         }
@@ -261,8 +262,8 @@ contract ASTNftSale is
     }
 
     function minting(
-        CATEGORY[] memory _category,
-        string[] memory _tokenURI
+        CATEGORY[] memory _category
+    
     ) external   {
         for (uint256 i; i < _category.length; ) {
             tokenIdCount.increment();
@@ -270,8 +271,8 @@ contract ASTNftSale is
             _safeMint(_msgSender(), _id);
             categoryOf[_id] = _category[i];
             tokensByCategory[_category[i]].push(_id);
-            _setTokenURI(_id, _tokenURI[i]);
             i++;
+            
         }
     }
 
@@ -309,10 +310,15 @@ contract ASTNftSale is
                 tokenId
             );
             astRewards.updateRewardAmount(from,_rewards);
+            astRewards.updateLastClaimOfToken(tokenId);
+            astRewards.updateIsHoldgMystryBoxNft(to, true);
+            astRewards.updateIsHoldgMystryBoxNft(from, false);
         }
        
         super._beforeTokenTransfer(from, to, tokenId, batchSize);
     }
+
+
 
 
 

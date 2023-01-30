@@ -424,7 +424,7 @@ describe("Unit Tests", function () {
             await ethers.provider.send("evm_increaseTime", [30*24*60*60])
             expect(astNft.connect(user).buyPresale(1,{value: (1*(  0.1*10**18)).toString()}), 'PrivateSale is InActive');
 
-            var tx = await astNft.connect(admin).minting([1, 3, 2, 0], ["demo", "demo1", "demo2", "demo3"]);
+            var tx = await astNft.connect(admin).minting([1, 3, 2, 0]);
             var txn = await tx.wait();
 
 
