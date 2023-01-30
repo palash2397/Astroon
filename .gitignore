@@ -17,6 +17,7 @@
 **/.openzeppelin
 tasks/interaction/data/*
 !tasks/interaction/data/.gitkeep
+contracts/ASTNftSale1.sol
 
 # files
 *.DS_Store
