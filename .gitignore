@@ -32,6 +32,7 @@ yarn.lock
 package-lock.json
 contracts/ASTNftSale1.sol
 contracts/ASTNftSale2.sol
+contracts/ASTNftTest.sol
 
 
 src/types/*

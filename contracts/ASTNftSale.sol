@@ -98,22 +98,23 @@ contract ASTNftSale is
         token = IERC20MetadataUpgradeable(_tokenAddr);
         saleId = 1;
         rewardEnable = true;
+        notRevealedUri= "https://ipfs.io/ipfs/QmSRRqEcDZK3azRebTngLuMoReoe7VMZWF1BeV9YNmXdTp";
         _setDefaultRoyalty(_receiverAddress, _royaltyAmt);
         tierMap[1].minValue=1500*10**18;
-        tierMap[1].maxValue=(3000*10**18);
+        tierMap[1].maxValue=(3000*10**18); //2
 
         tierMap[2].minValue=3000*10**18;
-        tierMap[2].maxValue=(4500*10**18);   
+        tierMap[2].maxValue=(4500*10**18); //4
 
         tierMap[3].minValue=4500*10**18;
-        tierMap[3].maxValue=(6000*10**18);
+        tierMap[3].maxValue=(6000*10**18);  //6
 
         tierMap[4].minValue=6000*10**18;
-        tierMap[4].maxValue=(7500*10**18);
+        tierMap[4].maxValue=(7500*10**18); //8
      }
     IASTRewards public astRewards;
 
-    function setMaxPreSaleLimit(uint256 _presaleLimit) external   {
+    function setMaxPreSaleLimit(uint256 _presaleLimit) external onlyOwner {
         maxPresaleLimit = _presaleLimit;
     }
     function setTireMap(
@@ -125,7 +126,7 @@ contract ASTNftSale is
         tierMap[_tierLevel].maxValue = _max;
     }
 
-    function setMintCost(uint256 _id, uint256 _newMintCost) external  {
+    function setMintCost(uint256 _id, uint256 _newMintCost) external onlyOwner {
         SaleDetailMap[_id].mintCost =_newMintCost;
     }
     function getRevealedTime() external view returns(uint256){ 
@@ -139,7 +140,7 @@ contract ASTNftSale is
         uint256 _maxSupply,
         uint256 _startTime,
         uint256 _endTime
-    ) external   returns (uint256) {
+    ) external onlyOwner  returns (uint256) {
         SaleDetailMap[saleId] = SaleInfo(
             _cost,
             _mintCost,
@@ -151,11 +152,11 @@ contract ASTNftSale is
         emit SaleStart(saleId);
         return saleId;
     }
-    function setRevealed() external   {
+    function setRevealed() external onlyOwner   {
         revealed = !revealed;
     }
 
-    function setMinimumToken(uint256 _minToken) external   {
+    function setMinimumToken(uint256 _minToken) external onlyOwner  {
         minToken = _minToken;
     }
 
@@ -168,14 +169,14 @@ contract ASTNftSale is
         return tokensByCategory[nftType];
     }
 
-    function setRewardStatus() external   { 
+    function setRewardStatus() external onlyOwner  { 
         rewardEnable = !rewardEnable;
     }
 
     function updateCategory(
         CATEGORY[] memory _category,
         uint256[] memory _id
-    ) external   {
+    ) external onlyOwner  {
         require(_category.length == _id.length, "Invalid length");
         for (uint256 i; i < _category.length; i++) {
             categoryOf[_id[i]] = _category[i];
@@ -183,7 +184,7 @@ contract ASTNftSale is
         }
     }
 
-    function UpdateTokenAddress(address _tokenAddr) external   {
+    function UpdateTokenAddress(address _tokenAddr) external onlyOwner  {
         token = IERC20MetadataUpgradeable(_tokenAddr);
     }
 
@@ -216,7 +217,7 @@ contract ASTNftSale is
         );
     }
 
-    function setRewardContract(IASTRewards _astRewards) external   {
+    function setRewardContract(IASTRewards _astRewards) external onlyOwner   {
         astRewards = _astRewards;
     }
 
@@ -250,7 +251,7 @@ contract ASTNftSale is
     function minting(
         CATEGORY[] memory _category
     
-    ) external   {
+    ) external onlyOwner  {
         for (uint256 i; i < _category.length; ) {
             tokenIdCount.increment();
             uint256 _id = tokenIdCount.current();
@@ -331,7 +332,7 @@ contract ASTNftSale is
                 : "";
     }
 
-    function reveal() external   {
+    function reveal() external  onlyOwner {
         revealed = true;
         revealedTime=block.timestamp;
 
@@ -341,27 +342,27 @@ contract ASTNftSale is
         return baseURI;
     }
 
-    function setDefaultRoyalty(address receiver, uint96 feeNumerator) external    {
+    function setDefaultRoyalty(address receiver, uint96 feeNumerator) external  onlyOwner  {
        _setDefaultRoyalty( receiver,  feeNumerator);
     }
 
-    function setBaseURI(string memory _newBaseURI) external   {
+    function setBaseURI(string memory _newBaseURI) external  onlyOwner {
         baseURI = _newBaseURI;
     }
 
     function setNotRevealedURI(
         string memory _notRevealedURI
-    ) external   {
+    ) external onlyOwner  {
         notRevealedUri = _notRevealedURI;
     }
 
     function setBaseExtension(
         string memory _newBaseExtension
-    ) external   {
+    ) external onlyOwner  {
         baseExtension = _newBaseExtension;
     }
 
-    function setCost(uint256 _saleId, uint256 _newCost) external   {
+    function setCost(uint256 _saleId, uint256 _newCost) external  onlyOwner {
         SaleDetailMap[_saleId].cost = _newCost;
     }
 
@@ -371,15 +372,15 @@ contract ASTNftSale is
             block.timestamp <= detail.endTime); // Must be before the end date
     }
 
-    function pause() external   {
+    function pause() external onlyOwner  {
         _pause();
     }
 
-    function unpause() external   {
+    function unpause() external onlyOwner  {
         _unpause();
     }
 
-    function withdrawAmount() external   {
+    function withdrawAmount() external  onlyOwner {
         payable(owner()).transfer(address(this).balance);
     }
 

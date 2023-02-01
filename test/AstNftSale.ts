@@ -285,6 +285,17 @@ describe("Unit Tests", function () {
             await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
         });
 
+        it("PreSale buy Only-three", async function () {
+            await token.connect(user).approve(astNft.address, "2500000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "6000000000000000000000")
+            await token.transfer(user.address, "4000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{ value: (3*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+         
+           
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+
         it("PreSale buy Only-four", async function () {
             await token.connect(user).approve(astNft.address, "5000000000000000000000")
             await token.connect(user).increaseAllowance(astNft.address, "600000000000000000000")
@@ -294,6 +305,16 @@ describe("Unit Tests", function () {
 
             
             await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+        it("PreSale buy Only-five", async function () {
+            await token.connect(user).approve(astNft.address, "2500000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "6000000000000000000000")
+            await token.transfer(user.address, "5500000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{ value: (3*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+         
+           
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*(0.1*10**18)).toString()}), 'buying Limit exceeded');
         });
         it("PreSale buy Only-six", async function () {
             await token.connect(user).approve(astNft.address, "5000000000000000000000")
