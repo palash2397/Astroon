@@ -1,4 +1,5 @@
 import type { SignerWithAddress } from "@nomiclabs/hardhat-ethers/dist/src/signer-with-address";
+import { doesNotMatch } from "assert";
 import { expect } from "chai";
 
 const { expectRevert, expectEvent } = require("@openzeppelin/test-helpers");
@@ -8,11 +9,12 @@ const { expectRevert, expectEvent } = require("@openzeppelin/test-helpers");
 import { ethers } from 'hardhat'
 import { upgrades } from 'hardhat'
 const truffleAssert = require('truffle-assertions');
+const receiver = "0x4F02C3102A9D2e1cC0cC97c7fE2429B9B6F5965D";
 
 
 describe("Unit Tests", function () {
 
-    let token:any, astNft:any, admin:SignerWithAddress, user:SignerWithAddress,
+    let token:any, astNft:any, astReward:any, admin:SignerWithAddress, user:SignerWithAddress
 
     const _rate = (780000000000000).toString(); //.00078 ether
     const _cap = ("7800000000000000000").toString();
@@ -22,154 +24,430 @@ describe("Unit Tests", function () {
     const _cliff = 0;
     const _vesting = (5).toString();
     const _minBound = ("5000000000000000000").toString();
-
-
-    var data = [ 
-        {
-            category: [0],
-            tokenURI: ["image"],
-            qty: 1
-        },
-        {
-            category: [0, 2],
-            tokenURI: ["image1", "image2"],
-            qty: 2
-        },
-        {
-            category: [3,2,1],
-            tokenURI: ["image1", "image2", "image3"],
-            qty: 3
-        },
-        {
-            category: [0,3, 3, 2],
-            tokenURI: ["image1", "image2", "image3", "image4"],
-            qty: 4
-        },
-        {
-            category: [2, 0, 3],
-            tokenURI: ["image1", "image2", "image3", "image4"],
-            qty: 3
-        }
-        
-    ]
+  
     beforeEach(async function () {
         const signers: SignerWithAddress[] = await ethers.getSigners();
         admin = signers[0];
         user = signers[1];
-
+    
         const astToken = await ethers.getContractFactory("ASTToken");
         token = await astToken.deploy();
         await token.deployed();
-
+        
         const nft = await ethers.getContractFactory("ASTNftSale");
-        astNft = await upgrades.deployProxy(nft, ["ASTNFT", "AstNft", "http://ipfs.io/ipfs/", token.address, ".json", 4, (110*10**18).toString()], {
+        astNft = await upgrades.deployProxy(nft, ["ASTNFT", "AstNft", "http://ipfs.io/ipfs/", token.address, ".json", 10, "1500000000000000000000", receiver, 1], {
         initializer: "initialize",
         });
         await astNft.deployed();
-
+       
+        const reward = await ethers.getContractFactory("ASTTokenRewards");
+        
+        astReward = await upgrades.deployProxy(reward, [astNft.address, token.address], {
+        initializer: "initialize",
+        });
+        await astReward.deployed();
+      
+        await astNft.setRewardContract(astReward.address);
+        
         const blockNumber = await ethers.provider.getBlockNumber();
         const { timestamp } = await ethers.provider.getBlock(blockNumber);
 
-        const tx = await astNft.startSale(0, (1*10**18).toString(), (0.1*10**18).toString(), 2400, timestamp, timestamp+(30*24*60*60));
+        const tx = await astNft.startPreSale((400*10**18).toString(), (0.1*10**18).toString(), 2400, timestamp, timestamp+(30*24*60*60));
         var x = parseInt((await tx.wait()).logs[0].data);
 
-        const tx1 = await astNft.startSale(1, (1*10**18).toString(), (0.1*10**18).toString(), 2400, timestamp+(30*24*60*60), timestamp+(60*24*60*60));
-        var x = parseInt((await tx1.wait()).logs[0].data);
-
-        await astNft.setTireMap(1, (100*10**18).toString(),  (300*10**18).toString());
-        await astNft.connect(admin).setTireMap(2, ((300*10**18)+1).toString(), (600*10**18).toString());
-        await astNft.connect(admin).setTireMap(3, ((600*10**18)+1).toString(), (800*10**18).toString());
+        await astNft.setTireMap(1, "1500000000000000000000",  "3000000000000000000000");
+        await astNft.connect(admin).setTireMap(2, "3000000000000000000000","4500000000000000000000");
+        await astNft.connect(admin).setTireMap(3, "4500000000000000000000","6000000000000000000000");
+        await astNft.connect(admin).setTireMap(4, "6000000000000000000000","7500000000000000000000");
     });
 
     describe("ASTNFT", () => {
-        it("PreSale buy one by one", async function () {
-
-            await truffleAssert.reverts(astNft.connect(user).buyPublicSale(data[4].category, data[4].tokenURI, data[4].qty, {value: (5*(1*10**18 + 0.1*10**18)).toString()}), 'PublicSale is InActive');
-
-            await token.transfer(user.address, (110*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{ value: (1*(1*10**18 + 0.1*10**18)).toString()});
+        it("PreSale buy one by one", async  ()=> {
+            
+           await token.connect(user).approve(astNft.address, "7000000000000000000000")
+           await token.connect(user).increaseAllowance(astNft.address, "800000000000000000000")
+           await token.transfer(user.address, "8000000000000000000000");
+          
+           
+           var tx = await astNft.connect(user).buyPresale(1,{ value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
             var txn = await tx.wait();
 
-            await token.transfer(user.address, (200*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()});
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
             var txn = await tx.wait();
 
-            await token.transfer(user.address, (300*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()});
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
             var txn = await tx.wait();
 
-            await token.transfer(user.address, (300*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()});
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
             var txn = await tx.wait();
-        });
 
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+
+            // await token.transfer(user.address, (800*10**18).toString());
+            // var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            // var txn = await tx.wait();
+
+            // await ethers.provider.send("evm_increaseTime", [365*24*60*60])
+            // await ethers.provider.send("evm_mine")
+            // var tx = await astReward.getRewardsCalc(0, 1, user.address)
+            // console.log("reward", parseInt(tx))
+            // await token.connect(admin).transfer( astReward.address, ("1000000000000000000000".toString()));
+            // await astReward.connect(user).claim();
+            // await ethers.provider.send("evm_increaseTime", [((365*2) + 300)*24*60*60])
+            // await ethers.provider.send("evm_mine")
+            // tx = await astReward.getRewardsCalc(0, 1, user.address)
+            // console.log("reward", parseInt(tx))
+            
+        })
+        
         it("PreSale buy two-two", async function () {
-
-            await token.transfer(user.address, (301*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[1].category, data[1].tokenURI, data[1].qty,{ value: (2*(1*10**18 + 0.1*10**18)).toString()});
+              
+            await token.connect(user).approve(astNft.address, "7000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "800000000000000000000")
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{ value: (2*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+         
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+            
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()});
             var txn = await tx.wait();
 
-            await token.transfer(user.address, (600*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[1].category, data[1].tokenURI, data[1].qty,{value: (2*(1*10**18 + 0.1*10**18)).toString()});
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()});
             var txn = await tx.wait();
 
-            await token.transfer(user.address, (300*10**18).toString());
-            await truffleAssert.reverts(astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()}), 'buying Limit exceeded');
+
+            await token.transfer(user.address, "8000000000000000000000");
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+           
+        });
+        
+
+        it("PreSale buy three-three", async function () {
+            await token.connect(user).approve(astNft.address, "7000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "800000000000000000000")
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{ value: (3*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{value: (3*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{value: (3*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "1400000000000000000000");
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*(0.1*10**18)).toString()}), 'buying Limit exceeded');
         });
 
-        it("PreSale buy three-one", async function () {
 
-            await token.transfer(user.address, (601*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[2].category, data[2].tokenURI, data[2].qty,{ value: (3*(1*10**18 + 0.1*10**18)).toString()});
+        it("PreSale buy four-four", async function () {
+            await token.connect(user).approve(astNft.address, "7000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "800000000000000000000")
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(4,{ value: (4*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(4,{value: (4*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()});
             var txn = await tx.wait();
 
-            await token.transfer(user.address, (300*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()});
-            var txn = await tx.wait();
-
-            await token.transfer(user.address, (300*10**18).toString());
-            await truffleAssert.reverts(astNft.connect(user).buyPresale(data[1].category, data[1].tokenURI, data[1].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()}), 'buying Limit exceeded');
+            await token.transfer(user.address, "8000000000000000000000");
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
         });
 
-        it("PreSale buy In between token removal from balance three-one", async function () {
+        it("PreSale buy five-five", async function () {
+            await token.connect(user).approve(astNft.address, "7000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "800000000000000000000")
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(5,{ value: (5*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(5,{value: (5*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+          
+            await token.transfer(user.address, "8000000000000000000000");
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
 
-            await token.transfer(user.address, (601*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[2].category, data[2].tokenURI, data[2].qty,{ value: (3*(1*10**18 + 0.1*10**18)).toString()});
+
+        it("PreSale buy six-six", async function () {
+            await token.connect(user).approve(astNft.address, "7000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "800000000000000000000")
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(6,{ value: (6*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{value: (3*( 0.1*10**18)).toString()});
             var txn = await tx.wait();
 
-            await token.connect(user).transfer(admin.address, (300*10**18).toString());
-            await truffleAssert.reverts(astNft.connect(user).buyPresale(data[1].category, data[1].tokenURI, data[1].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()}), 'buying Limit exceeded');
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+          
+            await token.transfer(user.address, "8000000000000000000000");
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+
+        it("PreSale buy seven-seven", async function () {
+            await token.connect(user).approve(astNft.address, "7000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "800000000000000000000")
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(7,{ value: (7*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "8000000000000000000000");
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+
+
+        it("PreSale buy Eight-Eight", async function () {
+            await token.connect(user).approve(astNft.address, "7000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "800000000000000000000")
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(8,{ value: (8*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await token.transfer(user.address, "8000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+          
+            await token.transfer(user.address, "8000000000000000000000");
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+
+        it("PreSale buy Only-two", async function () {
+            await token.connect(user).approve(astNft.address, "2500000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "3000000000000000000000")
+            await token.transfer(user.address, "1500000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{ value: (2*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+         
+            await token.transfer(user.address, "1400000000000000000000");
+         
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+
+        it("PreSale buy Only-three", async function () {
+            await token.connect(user).approve(astNft.address, "2500000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "6000000000000000000000")
+            await token.transfer(user.address, "4000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{ value: (3*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+         
+           
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+
+        it("PreSale buy Only-four", async function () {
+            await token.connect(user).approve(astNft.address, "5000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "600000000000000000000")
+            await token.transfer(user.address, "4400000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(4,{ value: (4*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+        it("PreSale buy Only-five", async function () {
+            await token.connect(user).approve(astNft.address, "2500000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "6000000000000000000000")
+            await token.transfer(user.address, "5500000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{ value: (3*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+         
+           
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+        it("PreSale buy Only-six", async function () {
+            await token.connect(user).approve(astNft.address, "5000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "600000000000000000000")
+            await token.transfer(user.address, "5000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(4,{ value: (4*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            var tx = await astNft.connect(user).buyPresale(2,{ value: (2*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+
+        it("PreSale buy Only-eight", async function () {
+            await token.connect(user).approve(astNft.address, "5000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address, "750000000000000000000")
+            await token.transfer(user.address, "7000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(4,{ value: (4*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            var tx = await astNft.connect(user).buyPresale(2,{ value: (2*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+            
+            var tx = await astNft.connect(user).buyPresale(1,{ value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            var tx = await astNft.connect(user).buyPresale(1,{ value: (1*( 0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*(0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+        it("PreSale buy In between token removal from balance eight-eight", async function () {
+            await token.approve(astNft.address, "3000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address,"7000000000000000000000")
+            await token.transfer(user.address, "7000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(8,{ value: (8*(0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+      
+
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+        it("PreSale buy In between token removal from balance seven-seven", async function () {
+            await token.approve(astNft.address, "3000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address,"7000000000000000000000")
+            await token.transfer(user.address, "7000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(7,{ value: (7*(0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+      
+
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(3,{value: (3*( 0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+
+      
+        it("PreSale buy In between token removal from balance six-six", async function () {
+            await token.approve(astNft.address, "3000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address,"4500000000000000000000")
+            await token.transfer(user.address, "5000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(4,{ value: (4*(0.1*10**18)).toString()});
+            var txn = await tx.wait();
+           
+            var tx = await astNft.connect(user).buyPresale(2,{ value: (2*(0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(3,{value: (3*( 0.1*10**18)).toString()}), 'buying Limit exceeded');
+        });
+        it("PreSale buy In between token removal from balance five-five", async function () {
+            await token.approve(astNft.address, "3000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address,"6000000000000000000000")
+            await token.transfer(user.address, "5000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(5,{ value: (5*(0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()}), 'buying Limit exceeded');
+         
+        
+        });
+
+        it("PreSale buy In between token removal from balance four-four", async function () {
+            await token.approve(astNft.address, "3000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address,"6000000000000000000000")
+            await token.transfer(user.address, "4000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(4,{ value: (4*(0.1*10**18)).toString()});
+            var txn = await tx.wait();
+
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(4,{value: (4*( 0.1*10**18)).toString()}), 'buying Limit exceeded');
+         
+        
+        });
+
+        it("PreSale buy In between token removal from balance three-three", async function () {
+            await token.approve(astNft.address, "3000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address,"4500000000000000000000")
+            await token.transfer(user.address, "4000000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(3,{ value: (3*(0.1*10**18)).toString()});
+            var txn = await tx.wait();
+        
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()}), 'buying Limit exceeded');
         });
 
         it("PreSale buy In between token removal from balance two-two", async function () {
-
-            await token.transfer(user.address, (801*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[1].category, data[1].tokenURI, data[1].qty,{ value: (2*(1*10**18 + 0.1*10**18)).toString()});
+            await token.approve(astNft.address, "3000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address,"4500000000000000000000")
+            await token.transfer(user.address, "2900000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(2,{ value: (2*(  0.1*10**18)).toString()});
             var txn = await tx.wait();
-            await token.connect(user).transfer(admin.address, (300*10**18).toString());
-            await truffleAssert.reverts(astNft.connect(user).buyPresale(data[2].category, data[2].tokenURI, data[2].qty,{value: (2*(1*10**18 + 0.1*10**18)).toString()}), 'buying Limit exceeded');
+            
+         
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(3,{value: (3*(  0.1*10**18)).toString()}), 'buying Limit exceeded'); 
         });
 
-        it("PreSale buy In between token removal from balance one by one", async function () {
-
-            await token.transfer(user.address, (801*10**18).toString());
-            var tx = await astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{ value: (1*(1*10**18 + 0.1*10**18)).toString()});
+       it("PreSale buy In between token removal from balance one by one", async function () {
+            await token.approve(astNft.address, "3000000000000000000000")
+            await token.connect(user).increaseAllowance(astNft.address,"4500000000000000000000")
+            await token.transfer(user.address, "2900000000000000000000");
+            var tx = await astNft.connect(user).buyPresale(1,{ value: (1*( 0.1*10**18)).toString()});
+          
             var txn = await tx.wait();
-
-            await token.connect(user).transfer(admin.address, (690*10**18).toString());
-            await truffleAssert.reverts(astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()}), 'buying Limit exceeded');
-
+           
+            await truffleAssert.reverts(astNft.connect(user).buyPresale(2,{value: (2*( 0.1*10**18)).toString()}), 'buying Limit exceeded');
+            
         });
+
         
         it("PublicSale and privatesale validate or not", async function () {
             await ethers.provider.send("evm_increaseTime", [30*24*60*60])
-            expect(astNft.connect(user).buyPresale(data[0].category, data[0].tokenURI, data[0].qty,{value: (1*(1*10**18 + 0.1*10**18)).toString()}), 'PrivateSale is InActive');
+            expect(astNft.connect(user).buyPresale(1,{value: (1*(  0.1*10**18)).toString()}), 'PrivateSale is InActive');
 
-            var tx = await astNft.connect(user).buyPublicSale(data[3].category, data[3].tokenURI, data[3].qty, {value: (4*(1*10**18 + 0.1*10**18)).toString()});
+            var tx = await astNft.connect(admin).minting([1, 3, 2, 0]);
+            var txn = await tx.wait();
 
-            await ethers.provider.send("evm_increaseTime", [30*24*60*60])
-
-            await truffleAssert.reverts(astNft.connect(user).buyPublicSale(data[3].category, data[3].tokenURI, data[3].qty, {value: (4*(1*10**18 + 0.1*10**18)).toString()}), 'PublicSale is InActive');
         });
+
     });
 });

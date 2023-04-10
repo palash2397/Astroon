@@ -45,16 +45,17 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
 
     struct UserToken {
         uint256 saleRound;
-        uint256 tokens;
+        uint256 tokenspurchased;
         uint256 claimed;
-        uint256 lastClaimed;
+        uint256 lastClaimedTime;
         uint256 createdOn;
         uint256 userCliff;
+        uint256 remainingTokens;
     }
 
     mapping(uint256 => SaleDetail) public salesDetailMap;
     mapping(uint256 => mapping(address => UserToken)) public userTokenMap;
-
+    mapping(uint256 => bool) internal saleIdMap;
     /**
      * BoughtTokens
      * @dev Log tokens bought onto the blockchain
@@ -63,11 +64,23 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
     event SaleCreated(uint256 saleId);
     event Claimed(address indexed receiver, uint256 amount, uint256 saleId);
 
+    uint256 private seedSaleId;
+    uint256 private privateSaleId;
+    uint256 private publicSaleId;
+
+    bytes32 private privateMerkleRoot;
+
     /**
      * initialize
      * @dev Initialize the contract
      **/
-    function initialize(address _tokenAddr, uint256 _initialTokens) external initializer {
+    function initialize(
+        address _tokenAddr,
+        uint256 _initialTokens
+    )
+        external
+        initializer
+    {
         require(_tokenAddr != address(0));
         require(_initialTokens > 0);
         initialTokens = _initialTokens * 10**18;
@@ -82,11 +95,37 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
      * @notice startTokenSale for starting any token sale
      */
 
-    function set_initialTokens(uint256 _newValue) public onlyOwner {
+    function set_initialTokens(
+        uint256 _newValue
+    )
+        public
+        onlyOwner
+    {
         initialTokens = _newValue * 10**18;
     }
 
+    function updateSaleIdbyType(uint256 _saleType, uint256 _saleId) internal {
+        if(_saleType == 0) {
+            seedSaleId = _saleId;
+        } else if (_saleType == 1) {
+            privateSaleId = _saleId;
+        } else {
+            publicSaleId = _saleId;
+        }
+    }
+
+    function getSaleIdbyType(uint256 _saleType) internal view returns(uint256) {
+        uint256 _saleId = _saleType == 0 
+            ? seedSaleId
+            : _saleType == 1
+            ? privateSaleId
+            : publicSaleId;
+        return _saleId;
+    }
+
     function startTokenSale(
+        uint256 _saleType,
+        uint256 _saleId,
         uint256 _rate,
         uint256 _cap,
         uint256 _start,
@@ -95,8 +134,15 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
         uint256 _cliff,
         uint256 _vesting,
         uint256 _minBound
-    ) external whenNotPaused onlyOwner returns (uint256) {
+    )
+        external
+        whenNotPaused
+        onlyOwner
+        returns (uint256)
+    {
+        require(_saleType == 0 || _saleType == 1 || _saleType == 2, "Invalid sale type");
         saleId++;
+        updateSaleIdbyType(_saleType, saleId);
 
         SaleDetail memory detail;
         detail.rate = _rate;
@@ -106,8 +152,8 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
         detail.cliff = _cliff * 1 days;
         detail.vesting = _vesting;
         detail.thresHold = _thresHold;
-        detail.tokenSold;
         detail.minBound = _minBound;
+        detail.tokenSold = salesDetailMap[_saleId].tokenSold;
         salesDetailMap[saleId] = detail;
         emit SaleCreated(saleId);
         return saleId;
@@ -117,40 +163,88 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
      * @notice Update Merkel Root to Whitelist users
      * @param _merkleRoot for whitelist users
      */
-    function setMerkleRoot(bytes32 _merkleRoot) external onlyOwner {
+    function setSeedMerkleRoot(
+        bytes32 _merkleRoot
+    ) external onlyOwner {
         merkleRoot = _merkleRoot;
     }
 
-    function togglePresale() public onlyOwner {
+    function setPrivateSaleMerkleRoot(
+        bytes32 _merkleRoot
+    ) external onlyOwner {
+        privateMerkleRoot = _merkleRoot;
+    }
+
+    function togglePresale()
+        public
+        onlyOwner
+    {
         presaleM = !presaleM;
     }
 
-    function togglePublicSale() public onlyOwner {
+    function togglePublicSale()
+        public
+        onlyOwner
+    {
         publicM = !publicM;
     }
 
-    function pause() public onlyOwner {
+    function pause()
+        public
+        onlyOwner
+    {
         _pause();
     }
 
-    function unpause() public onlyOwner {
+    function unpause()
+        public
+        onlyOwner
+    {
         _unpause();
+    }
+
+    function updateSaleIdStatus(
+        uint256 _saleId
+    )
+        external
+        onlyOwner
+    {
+        saleIdMap[_saleId] = !saleIdMap[_saleId];
+    }
+    /**
+     * @notice get curren active merkel root
+     */
+    function getSeedMerkleRoot()
+        external
+        view
+        returns (bytes32)
+    {
+        return merkleRoot;
     }
 
     /**
      * @notice get curren active merkel root
      */
-    function getMerkleRoot() external view returns (bytes32) {
-        return merkleRoot;
+
+    function getPrivateMerkleRoot()
+        external
+        view
+        returns (bytes32)
+    {
+        return privateMerkleRoot;
     }
 
     /**
      * @notice check user whitelist or not
      * @param _merkleProof merkelProof generated by MerkelTree for current MerkelRoot
      */
-    modifier checkWhitelist(bytes32[] memory _merkleProof) {
+    modifier checkWhitelist(uint256 _saleType, bytes32[] memory _merkleProof) {
         bytes32 sender = keccak256(abi.encodePacked(_msgSender()));
-        require(MerkleProofUpgradeable.verify(_merkleProof, merkleRoot, sender), "not whitelisted");
+        bytes32 _merkleRoot = _saleType == 0 ? merkleRoot : privateMerkleRoot;
+        require(
+            MerkleProofUpgradeable.verify(_merkleProof, _merkleRoot, sender),
+            "not whitelisted"
+        );
         _;
     }
 
@@ -158,18 +252,31 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
      * isActive
      * @dev Determins if the contract is still active
      **/
-    function isActive(uint256 _saleId) public view returns (bool) {
+    function isActive(
+        uint256 _saleId
+    )
+        public
+        view
+        returns (bool)
+    {
         SaleDetail memory detail = salesDetailMap[_saleId];
         return (block.timestamp >= detail.start && // Must be after the start date
             block.timestamp <= detail.start + (detail._days * 1 days) && // Must be before the end date
-            goalReached(_saleId) == false); // Goal must not already be reached
+            goalReached(_saleId) == false) && // Goal must not already be reached
+            !saleIdMap[_saleId]; // Must be saleIdMap is false
     }
 
     /**
      * goalReached
      * @dev Function to determin is goal has been reached
      **/
-    function goalReached(uint256 _saleId) public view returns (bool) {
+    function goalReached(
+        uint256 _saleId
+    )
+        public
+        view
+        returns (bool)
+    {
         SaleDetail memory detail = salesDetailMap[_saleId];
         return (detail.raisedIn >= detail.cap * 1 ether);
     }
@@ -189,46 +296,103 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
      * buyTokens
      * @dev function that sells available tokens
      **/
-    function preSaleBuy(bytes32[] calldata _proof) public payable whenNotPaused nonReentrant checkWhitelist(_proof) {
-        require(isActive(saleId), "Sale is not active");
-        require(presaleM, "Presale is OFF");
-        SaleDetail memory detail = salesDetailMap[saleId];
-        require(msg.value > 0, "invalid amount");
-        UserToken memory userToken;
+    function preSaleBuy(
+        uint256 _saleType,
+        bytes32[] calldata _proof
+    )
+        public
+        payable
+        whenNotPaused
+        nonReentrant
+        checkWhitelist(_saleType, _proof)
+    {
+        require(
+            _saleType == 0 || _saleType == 1,
+            "Invalid sale type"
+        );
+        uint256 _saleId = getSaleIdbyType(_saleType);
+        require(
+            isActive(_saleId),
+            "Sale is not active"
+        );
+        require(
+            presaleM,
+            "Presale is OFF"
+        );
+        require(
+            msg.value > 0,
+            "invalid amount"
+        );
+        SaleDetail memory detail = salesDetailMap[_saleId];
+        UserToken memory userToken = userTokenMap[_saleId][_msgSender()];
         uint256 _tokens = calculateToken(msg.value, detail.rate);
         require(
             _tokens >= detail.minBound && _tokens <= detail.thresHold && _tokens <= initialTokens,
             "buying more than max allowed"
         );
-        userToken.saleRound = saleId;
+        userToken.saleRound = _saleId;
         userToken.createdOn = block.timestamp;
-        userToken.lastClaimed = block.timestamp;
+        userToken.lastClaimedTime = block.timestamp;
         userToken.userCliff = block.timestamp + detail.cliff;
-        userToken.tokens += _tokens;
+        userToken.tokenspurchased += _tokens;
+        userToken.remainingTokens += _tokens;
 
-        emit BoughtTokens(msg.sender, _tokens, saleId); // log event onto the blockchain
+        emit BoughtTokens(msg.sender, _tokens, _saleId); // log event onto the blockchain
         detail.tokenSold += _tokens;
         initialTokens -= _tokens;
         detail.raisedIn += msg.value; // Increment raised amount
-        userTokenMap[saleId][_msgSender()] = userToken;
+        salesDetailMap[_saleId] = detail;
+        userTokenMap[_saleId][_msgSender()] = userToken;
         payable(owner()).transfer(msg.value); // Send money to owner
     }
 
-    function calculateToken(uint256 amount, uint256 _rate) public pure returns (uint256) {
+    function calculateToken(
+        uint256 amount,
+        uint256 _rate
+    )
+        public
+        pure
+        returns (uint256)
+    {
         return (amount / _rate) * 10**18;
     }
 
-    function claim(uint256 _saleId) external whenNotPaused nonReentrant {
+    function claim(
+        uint256 _saleId
+    )
+        external
+        whenNotPaused
+        nonReentrant
+    {
         SaleDetail memory detail = salesDetailMap[_saleId];
+        require(
+            block.timestamp > detail.cliff,
+            "cliff not ended"
+        );
         UserToken memory utoken = userTokenMap[_saleId][_msgSender()];
-        require(block.timestamp > utoken.userCliff, "cliff not ended");
-        require(utoken.saleRound == _saleId, "not purchase data");
-        uint256 claimedOn = utoken.lastClaimed == utoken.createdOn ? utoken.userCliff : utoken.lastClaimed;
-        uint256 amount = calculateReleaseToken(utoken.tokens, detail.vesting, claimedOn);
-        require(amount > 0, "no rewards");
-        require(amount < tokensAvailable(), "insufficent token balance");
+        require(
+            utoken.saleRound == _saleId,
+            "not purchase data"
+        );
+        require(
+            utoken.remainingTokens != 0,
+            "no tokens left"
+        );
+        uint256 claimedOn = utoken.lastClaimedTime == utoken.createdOn ? utoken.userCliff : utoken.lastClaimedTime;
+
+        uint256 amount = calculateReleaseToken(utoken.tokenspurchased, detail.vesting, claimedOn);
+        require(
+            amount > 0,
+            "no rewards"
+        );
+        require(
+            amount < tokensAvailable(),
+            "insufficent token balance"
+        );
+
         utoken.claimed += amount;
-        utoken.lastClaimed = block.timestamp;
+        utoken.remainingTokens = utoken.remainingTokens - amount;
+        utoken.lastClaimedTime = block.timestamp;
         userTokenMap[_saleId][_msgSender()] = utoken;
         token.transfer(_msgSender(), amount);
         emit Claimed(_msgSender(), amount, _saleId);
@@ -237,45 +401,43 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
     function calculateReleaseToken(
         uint256 _token,
         uint256 vesting,
-        uint256 lastClaimed
-    ) public view returns (uint256) {
+        uint256 lastClaimedTime
+    )
+        public
+        view
+        returns (uint256)
+    {
         uint256 tokenperDay = _token / vesting;
-        uint256 day = _getDays(lastClaimed);
+        uint256 day = _getDays(lastClaimedTime);
         return tokenperDay * (day > vesting ? vesting : day);
     }
 
-    function getReward(uint256 _saleId, address _addr) external view whenNotPaused returns (uint256) {
+    function getReward(
+        uint256 _saleId,
+        address _addr
+    )
+        external
+        view
+        whenNotPaused
+        returns (uint256)
+    {
         SaleDetail memory detail = salesDetailMap[_saleId];
         UserToken memory utoken = userTokenMap[_saleId][_addr];
-        uint256 claimedOn = utoken.lastClaimed == utoken.createdOn ? utoken.userCliff : utoken.lastClaimed;
-        uint256 amount = calculateReleaseToken(utoken.tokens, detail.vesting, claimedOn);
+        uint256 claimedOn = utoken.lastClaimedTime == utoken.createdOn
+            ? utoken.userCliff
+            : utoken.lastClaimedTime;
+        uint256 amount = calculateReleaseToken(utoken.tokenspurchased, detail.vesting, claimedOn);
         return amount;
     }
 
-    function _getDays(uint256 _timestamp) internal view returns (uint256) {
+    function _getDays(
+        uint256 _timestamp
+    )
+        internal
+        view
+        returns (uint256)
+    {
         return (block.timestamp - _timestamp) / 86400;
-    }
-
-    function updateClaim(
-        uint256 _saleId,
-        uint256 _date,
-        address _user
-    ) external onlyOwner {
-        UserToken memory utoken = userTokenMap[_saleId][_user];
-        require(utoken.saleRound == _saleId, "not purchase data");
-        utoken.lastClaimed = _date;
-        userTokenMap[_saleId][_user] = utoken;
-    }
-
-    function updateUserCliff(
-        uint256 _saleId,
-        uint256 _timestamp,
-        address _userAdd
-    ) external onlyOwner {
-        UserToken memory utoken = userTokenMap[_saleId][_userAdd];
-        require(utoken.saleRound == _saleId, "not purchase data");
-        utoken.userCliff = _timestamp;
-        userTokenMap[_saleId][_userAdd] = utoken;
     }
 
     /**
@@ -283,20 +445,37 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
      * buyTokens
      * @dev function that sells available tokens
      **/
-    function buyTokens() public payable whenNotPaused nonReentrant {
-        require(isActive(saleId), "Sale is not active");
-        require(publicM, "sale is OFF");
-        require(msg.value > 0);
-        SaleDetail memory detail = salesDetailMap[saleId];
+    function buyTokens()
+        public
+        payable
+        whenNotPaused
+        nonReentrant
+    {
+        uint256 _saleId = getSaleIdbyType(2);
+        require(
+            isActive(_saleId),
+            "Sale is not active"
+        );
+        require(
+            publicM,
+            "sale is OFF"
+        );
+        require(
+            msg.value > 0,
+            "value should be grater than. zero"
+        );
+        SaleDetail memory detail = salesDetailMap[_saleId];
         uint256 tokens = calculateToken(msg.value, detail.rate);
-        require(tokens < detail.thresHold, "buying more than max allowed");
-        emit BoughtTokens(msg.sender, tokens, saleId); // log event onto the blockchain
+        require(
+            tokens < detail.thresHold,
+            "buying more than max allowed"
+        );
+        emit BoughtTokens(msg.sender, tokens, _saleId); // log event onto the blockchain
         detail.raisedIn += msg.value; // Increment raised amount
         detail.tokenSold += tokens;
         initialTokens -= tokens;
-
+        salesDetailMap[_saleId] = detail;
         token.transfer(msg.sender, tokens); // Send tokens to buyer
-
         payable(owner()).transfer(msg.value); // Send money to owner
     }
 
@@ -304,15 +483,30 @@ contract ASTILO is OwnableUpgradeable, PausableUpgradeable, ReentrancyGuardUpgra
      * tokensAvailable
      * @dev returns the number of tokens allocated to this contract
      **/
-    function tokensAvailable() public view returns (uint256) {
+    function tokensAvailable()
+        public
+        view
+        returns (uint256)
+    {
         return token.balanceOf(address(this));
     }
 
-    function withdrawETH(address admin) external onlyOwner {
+    function withdrawETH(
+        address admin
+    )
+        external
+        onlyOwner
+    {
         payable(admin).transfer(address(this).balance);
     }
 
-    function withdrawToken(address admin, address _paymentToken) external onlyOwner {
+    function withdrawToken(
+        address admin,
+        address _paymentToken
+    )
+        external
+        onlyOwner
+    {
         IERC20Upgradeable _token = IERC20Upgradeable(_paymentToken);
         uint256 amount = _token.balanceOf(address(this));
         token.transfer(admin, amount);

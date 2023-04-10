@@ -20,7 +20,6 @@ async function main() {
   await Ast.deployed();
   console.log("Contract deployed to :", Ast.address);
 
-
 }
 
 main()

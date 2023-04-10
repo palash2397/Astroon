@@ -154,11 +154,7 @@ contract ASTNftSale is
         return saleId;
     }
 
-    function setRevealed() external onlyOwner {
-        revealed = !revealed;
-    }
-
-    function setMinimumToken(uint256 _minToken) external onlyOwner {
+     function setMinimumToken(uint256 _minToken) external onlyOwner {
         minToken = _minToken;
     }
 
@@ -388,7 +384,7 @@ contract ASTNftSale is
     }
 
     function _burn(
-        uint256 tokenId
+        uint256 tokenId  
     ) internal override(ERC721Upgradeable, ERC721URIStorageUpgradeable) {
         super._burn(tokenId);
     }

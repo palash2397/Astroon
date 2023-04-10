@@ -80,7 +80,7 @@ function getChainConfig(chain: keyof typeof chainIds): NetworkUserConfig {
 const network = process.env.TESTING === "true" ? "hardhat" : process.env.DEPLOY_NETWORK || "rinkeby";
 
 const config: HardhatUserConfig = {
-  defaultNetwork: network,
+  defaultNetwork:  network, // network // "hardhat"
  
   etherscan: {
     apiKey: {
