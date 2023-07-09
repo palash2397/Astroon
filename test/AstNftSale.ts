@@ -113,16 +113,6 @@ describe("Unit Tests", function () {
             // var tx = await astNft.connect(user).buyPresale(1,{value: (1*( 0.1*10**18)).toString()});
             // var txn = await tx.wait();
 
-            // await ethers.provider.send("evm_increaseTime", [365*24*60*60])
-            // await ethers.provider.send("evm_mine")
-            // var tx = await astReward.getRewardsCalc(0, 1, user.address)
-            // console.log("reward", parseInt(tx))
-            // await token.connect(admin).transfer( astReward.address, ("1000000000000000000000".toString()));
-            // await astReward.connect(user).claim();
-            // await ethers.provider.send("evm_increaseTime", [((365*2) + 300)*24*60*60])
-            // await ethers.provider.send("evm_mine")
-            // tx = await astReward.getRewardsCalc(0, 1, user.address)
-            // console.log("reward", parseInt(tx))
             
         })
         
